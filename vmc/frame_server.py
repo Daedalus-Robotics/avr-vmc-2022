@@ -1,3 +1,4 @@
+import asyncio
 import socket
 import time
 from threading import Thread
@@ -6,11 +7,8 @@ import numpy as np
 
 from vmc import stream
 
-
-TOKEN = "uqqH_Uq0G0TxN9BO0pd5TN5a9qFGoz-FH6OrBTYo4yxEX-J9351rGTI3YCwnwoUVbGBIXFvNVRECoCJGQcbDiQ"
-
 BUFF_SIZE = 65536
-socket.setdefaulttimeout(2)
+socket.setdefaulttimeout(0.5)
 host_ip = '0.0.0.0'
 port = 9999
 socket_address = (host_ip, port)
@@ -108,28 +106,30 @@ def loop():
         while True:
             try:
                 msg, client_addr = server_socket.recvfrom(BUFF_SIZE)
-                break
+                if client_addr is not None:
+                    break
             except TimeoutError:
                 pass
         while True:
             try:
                 server_socket.sendto(csi_frame, client_addr)
-            except TimeoutError:
-                print("break")
+                # asyncio.run(asyncio.wait_for(_socket_send(server_socket, client_addr), 10))
+                print("frame")
+                check_alive = server_socket.recv(4)
+                if not check_alive == b"ping":
+                    break
+            except (OSError, TimeoutError):
                 break
-            time.sleep(1/60)
+            time.sleep(1 / 60)
         try:
             server_socket.shutdown(socket.SHUT_RDWR)
-        except TimeoutError:
+        except (OSError, TimeoutError):
             pass
         server_socket.close()
-    # async with websockets.serve(accept_client, "localhost", 8080):
-    #     await asyncio.Future()
 
 
 def start():
     global thread
-    # thread = Thread(target = lambda: serve(app, host = "192.168.1.180", port = 8080, ipv6 = False))
     thread = Thread(target = lambda: loop())
     thread.start()
 
@@ -165,13 +165,3 @@ def watchdog_loop():
 
 def run():
     Thread(target = watchdog_loop).start()
-
-
-# def test():
-#     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     fs = FrameSegment(s, 8080)
-#     while True:
-#         fs.udp_frame(csi_frame)
-#
-#
-# Thread(target = test).start()
