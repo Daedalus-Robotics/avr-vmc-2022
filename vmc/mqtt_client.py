@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import time
+from threading import Thread
 
 import numpy as np
 from loguru import logger
@@ -16,14 +18,16 @@ class MQTTClient:
             cls._instance = MQTTClient()
         return cls._instance
 
-    def __init__(self, host: str = "localhost", port: int = 1883):
+    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True):
         self._instance = self
 
         self.host = host
         self.port = port
+        self.retry = retry
 
         self.client = mqtt.Client(protocol = mqtt.MQTTv311)
         self.client.on_connect = self._on_connect
+        self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
 
         self.topic_map = {}
@@ -38,6 +42,10 @@ class MQTTClient:
             self.client.connect(host = self.host, port = self.port, keepalive = 60)
             self.client.loop_start()
 
+    def disconnect(self) -> None:
+        if self.is_connected:
+            self.client.disconnect(mqtt.DISCONNECT)
+
     def _on_connect(self, _: mqtt.Client, __: any, ___: dict, rc: int):
         self._connected = True
         logger.debug(f"Connected with result {rc}")
@@ -45,6 +53,16 @@ class MQTTClient:
         for topic in self.topic_map.keys():
             self.client.subscribe(topic)
             logger.success(f"Subscribed to: {topic}")
+
+    def _on_disconnect(self, _: mqtt.Client, __: any, ___: dict, rc: int):
+        logger.debug(f"Disconnected with result {rc}")
+        if self.retry and rc is not mqtt.DISCONNECT:
+            Thread(target = self._reconnect_loop).start()
+
+    def _reconnect_loop(self):
+        while not self.is_connected:
+            self.connect()
+            time.sleep(2)
 
     def _on_message(self, _: mqtt.Client, __: any, msg: mqtt.MQTTMessage):
         if msg.topic in self.topic_map:
