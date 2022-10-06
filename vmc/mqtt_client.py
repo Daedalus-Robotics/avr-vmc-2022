@@ -29,6 +29,7 @@ class MQTTClient:
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
+        self.client.loop_start()
 
         self.topic_map = {}
         self._connected = False
@@ -37,10 +38,14 @@ class MQTTClient:
     def is_connected(self) -> bool:
         return self.client.is_connected()
 
-    def connect(self) -> None:
+    def connect(self) -> bool:
         if not self.is_connected:
-            self.client.connect(host = self.host, port = self.port, keepalive = 60)
-            self.client.loop_start()
+            try:
+                self.client.connect(host = self.host, port = self.port, keepalive = 60)
+                self.client.loop_start()
+            except ConnectionRefusedError:
+                return False
+        return True
 
     def disconnect(self) -> None:
         if self.is_connected:
