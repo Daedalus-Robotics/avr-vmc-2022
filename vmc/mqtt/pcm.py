@@ -1,4 +1,3 @@
-from bell.avr.mqtt.client import MQTTModule
 from bell.avr.mqtt.payloads import (
     AvrPcmFireLaserPayload,
     AvrPcmSetBaseColorPayload,
@@ -11,21 +10,18 @@ from bell.avr.mqtt.payloads import (
     AvrPcmSetServoPctPayload,
     AvrPcmSetTempColorPayload,
 )
-from bell.avr.serial.client import SerialLoop
-from bell.avr.serial.pcc import PeripheralControlComputer
+
+from vmc.lib.pcc import PeripheralControlComputer
+from vmc.mqtt_client import MQTTClient
 
 
-class PeripheralControlModule(MQTTModule):
-    def __init__(self, port: str, baud_rate: int):
+class PeripheralControlModule:
+    def __init__(self, pcc: PeripheralControlComputer):
         super().__init__()
 
-        # PCC connection
-        self.ser = SerialLoop()
-        self.ser.port = port
-        self.ser.baudrate = baud_rate
-        self.ser.open()
+        self.pcc = pcc
 
-        self.pcc = PeripheralControlComputer(self.ser)
+        self.client = MQTTClient.get()
 
         # MQTT topics
         self.topic_map = {
@@ -41,9 +37,8 @@ class PeripheralControlModule(MQTTModule):
             "avr/pcm/set_servo_abs": self.set_servo_abs,
         }
 
-    def run(self) -> None:
-        super().run_non_blocking()
-        self.ser.run()
+        for topic, callback in self.topic_map:
+            self.client.register_callback(topic, callback)
 
     def set_base_color(self, payload: AvrPcmSetBaseColorPayload) -> None:
         wrgb = payload["wrgb"]
@@ -52,7 +47,7 @@ class PeripheralControlModule(MQTTModule):
     def set_temp_color(self, payload: AvrPcmSetTempColorPayload) -> None:
         wrgb = payload["wrgb"]
         time = payload.get("time", 0.5)  # default of 0.5 seconds
-        self.pcc.set_temp_color(wrgb=list(wrgb), time=time)
+        self.pcc.set_temp_color(wrgb=list(wrgb), length =time)
 
     def set_servo_open_close(self, payload: AvrPcmSetServoOpenClosePayload) -> None:
         servo = payload["servo"]
@@ -79,16 +74,16 @@ class PeripheralControlModule(MQTTModule):
         absolute = payload["absolute"]
         self.pcc.set_servo_abs(servo, absolute)
 
-    def fire_laser(self, payload: AvrPcmFireLaserPayload) -> None:
+    def fire_laser(self, _: AvrPcmFireLaserPayload) -> None:
         self.pcc.fire_laser()
 
-    def set_laser_on(self, payload: AvrPcmSetLaserOnPayload) -> None:
+    def set_laser_on(self, _: AvrPcmSetLaserOnPayload) -> None:
         self.pcc.set_laser_on()
 
-    def set_laser_off(self, payload: AvrPcmSetLaserOffPayload) -> None:
+    def set_laser_off(self, _: AvrPcmSetLaserOffPayload) -> None:
         self.pcc.set_laser_off()
 
 
 if __name__ == "__main__":
-    pcm = PeripheralControlModule("/dev/ttyACM0", 115200)
-    pcm.run()
+    pcm = PeripheralControlModule(PeripheralControlComputer())
+    pcm.client.connect()
