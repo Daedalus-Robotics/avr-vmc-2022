@@ -57,6 +57,7 @@ class PeripheralControlComputer:
         return self.dev.is_open and os.path.exists(self.dev.port)
 
     def _port_loop(self) -> None:
+        first_connection = True
         previously_connected = False
         while not self.shutdown:
             if not self.is_connected:
@@ -78,9 +79,10 @@ class PeripheralControlComputer:
                         except SerialException as e:
                             logger.exception(e)
                             connected = False
-                if not connected and previously_connected:
+                if not connected and (previously_connected or first_connection):
                     logger.warning("Cant connect to the PCC")
                 previously_connected = connected
+                first_connection = False
             if self.shutdown:
                 break
             time.sleep(2)
