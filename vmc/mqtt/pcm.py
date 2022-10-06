@@ -37,7 +37,7 @@ class PeripheralControlModule:
             "avr/pcm/set_servo_abs": self.set_servo_abs,
         }
 
-        for topic, callback in self.topic_map:
+        for topic, callback in self.topic_map.items():
             self.client.register_callback(topic, callback)
 
     def set_base_color(self, payload: AvrPcmSetBaseColorPayload) -> None:
