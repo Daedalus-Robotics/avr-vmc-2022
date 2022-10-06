@@ -29,7 +29,6 @@ class MQTTClient:
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
-        self.client.loop_start()
 
         self.topic_map = {}
         self._connected = False
