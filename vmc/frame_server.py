@@ -1,167 +1,146 @@
-import asyncio
+import math
 import socket
 import time
+from enum import Enum
 from threading import Thread
 
+import cv2
 import numpy as np
+from loguru import logger
 
 from vmc import stream
+from vmc.mqtt_client import MQTTClient
 
-BUFF_SIZE = 65536
 socket.setdefaulttimeout(0.5)
-host_ip = '0.0.0.0'
-port = 9999
-socket_address = (host_ip, port)
-print('Frame API listening at:', socket_address)
-
-_, csi_frame = stream.encode_frame(np.zeros((1, 1, 3), np.uint8))
-# zed_right_frame = np.zeros((1, 1, 3), np.uint8)
-# zed_left_frame = np.zeros((1, 1, 3), np.uint8)
-# zed_depth_frame = np.zeros((1, 1, 3), np.uint8)
-# thermal_frame = np.zeros((8, 8, 3), np.uint8)
-
-thread: Thread = None
+MAX_MESSAGE_SIZE = 9000
 
 
-# @app.route('/', methods=['HEAD'])
-# def status():
-#     return '', 200
-#
-#
-# @app.route('/csi', methods=['GET'])
-# def csi():
-#     return csi_frame, 200
+def limit(value: int, lower: int = None, upper: int = None):
+    if value >= upper:
+        value = upper
+    elif value <= lower:
+        value = lower
+    return value
 
 
-# @app.route('/zed/right', methods=['GET'])
-# def zed_right():
-#     return json.dumps(zed_right_frame.tolist())
-#
-#
-# @app.route('/zed/left', methods=['GET'])
-# def zed_left():
-#     return json.dumps(zed_left_frame.tolist())
-#
-#
-# @app.route('/zed/depth', methods=['GET'])
-# def zed_depth():
-#     return json.dumps(zed_depth_frame.tolist())
-#
-#
-# @app.route('/thermal', methods=['GET'])
-# def thermal():
-#     return json.dumps(thermal_frame.tolist())
+class CameraType(Enum):
+    CSI = 0
+    ZED_RIGHT = 1
+    ZED_LEFT = 2
+    ZED_DEPTH = 3
 
 
-def update_csi(frame: np.ndarray):
-    global csi_frame
-    csi_frame = frame
+class FrameServer:
+    def __init__(self, host: str = "0.0.0.0", port: int = 9999, buffer_size: int = 65536, timeout: float = 1) -> None:
+        self.host = host
+        self.port = port
+        self.buffer_size = buffer_size
+        self.timeout = timeout
 
+        self.cameras = {}
+        self.current_camera = CameraType.CSI
+        self.server_socket = None
+        self.server_thread = None
+        self.is_running = False
 
-# def update_zed_right(frame: np.ndarray):
-#     global zed_right_frame
-#     zed_right_frame = frame
-#
-#
-# def update_zed_left(frame: np.ndarray):
-#     global zed_left_frame
-#     zed_left_frame = frame
-#
-#
-# def update_zed_depth(frame: np.ndarray):
-#     global zed_depth_frame
-#     zed_depth_frame = frame
-#
-#
-# def update_thermal(frame: np.ndarray):
-#     global thermal_frame
-#     thermal_frame = frame
+        self.client = MQTTClient.get()
 
-# async def accept_client(ws):
-#     try:
-#         # token = await asyncio.wait_for(ws.recv(), 500)
-#         # print(token)
-#         # print(TOKEN)
-#         # if token == TOKEN:
-#         while True:
-#             await ws.send(csi_frame)
-#             #time.sleep(1/30)
-#         # else:
-#         #     print("auth failed")
-#         #     await ws.close()
-#         #     await ws.wait_closed()
-#     except websockets.ConnectionClosedError as e:
-#         print(e)
-#     except websockets.ConnectionClosedOK:
-#         print("closed")
-#         return
+        default_frame = stream.encode_frame(np.zeros((1, 1, 3), np.uint8))
+        self.cameras[CameraType.CSI] = default_frame
+        self.cameras[CameraType.ZED_RIGHT] = default_frame
+        self.cameras[CameraType.ZED_LEFT] = default_frame
+        self.cameras[CameraType.ZED_DEPTH] = default_frame
 
+        self.client.register_callback("avr/camera/restart", self.restart)
 
-def loop():
-    while True:
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, BUFF_SIZE)
-        server_socket.bind(socket_address)
-
-        while True:
-            try:
-                msg, client_addr = server_socket.recvfrom(BUFF_SIZE)
-                if client_addr is not None:
-                    break
-            except TimeoutError:
-                pass
-        while True:
-            try:
-                server_socket.sendto(csi_frame, client_addr)
-                # asyncio.run(asyncio.wait_for(_socket_send(server_socket, client_addr), 10))
-                print("frame")
-                check_alive = server_socket.recv(4)
-                if not check_alive == b"ping":
-                    break
-            except (OSError, TimeoutError):
-                break
-            time.sleep(1 / 60)
+    def update_frame(self, frame: np.ndarray, camera_type: CameraType, compression_level: int, height: int = None) -> bool:
+        if height is None:
+            height = frame.shape[0]
+        # noinspection PyBroadException
         try:
-            server_socket.shutdown(socket.SHUT_RDWR)
-        except (OSError, TimeoutError):
-            pass
-        server_socket.close()
+            resized_frame = stream.image_resize(frame, height = height)
+            success, encoded_frame = stream.encode_frame(resized_frame, (int(cv2.IMWRITE_JPEG_QUALITY), compression_level))
+            if success:
+                self.cameras[camera_type] = encoded_frame
+        except Exception:
+            return False
+        return success
 
+    def set_camera(self, camera_type: CameraType) -> None:
+        self.current_camera = camera_type
 
-def start():
-    global thread
-    thread = Thread(target = lambda: loop())
-    thread.start()
+    def start(self) -> None:
+        self.is_running = True
+        self.server_thread = Thread(target = self._server_loop, daemon = True)
+        self.server_thread.start()
 
+    def stop(self, hold: bool = False) -> None:
+        self.is_running = False
+        if hold and self.server_thread is not None:
+            self.server_thread.join()
 
-def watchdog_loop():
-    while True:
-        if thread is None or not thread.is_alive():
-            start()
-        time.sleep(5)
+    def restart(self, _ = None):
+        self.stop(True)
+        self.start()
 
-# class FrameSegment(object):
-#     MAX_DGRAM = 2 ** 16
-#     MAX_IMAGE_DGRAM = MAX_DGRAM - 64  # minus 64 bytes in case UDP frame overflown
-#
-#     def __init__(self, sock, port, addr = "127.0.0.1"):
-#         self.s = sock
-#         self.port = port
-#         self.addr = addr
-#
-#     def udp_frame(self, img):
-#         compress_img = cv2.imencode('.jpg', img)[1]
-#         dat = compress_img.tostring()
-#         size = len(dat)
-#         num_of_segments = math.ceil(size / self.MAX_IMAGE_DGRAM)
-#         array_pos_start = 0
-#
-#         while num_of_segments:
-#             array_pos_end = min(size, array_pos_start + self.MAX_IMAGE_DGRAM)
-#             self.s.sendto(struct.pack("B", num_of_segments) + dat[array_pos_start:array_pos_end], (self.addr, self.port))
-#             array_pos_start = array_pos_end
-#             num_of_segments -= 1
+    def _get_frame(self) -> bytes:
+        return self.cameras[self.current_camera]
 
+    def _server_loop(self) -> None:
+        logger.info(f"Server starting on port {self.port}")
+        while self.is_running:
+            logger.debug("Starting socket")
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, self.buffer_size)
+            self.server_socket.bind((self.host, self.port))
+            self.server_socket.settimeout(self.timeout)
 
-def run():
-    Thread(target = watchdog_loop).start()
+            client_addr = None
+            while self.is_running:
+                try:
+                    msg, client_addr = self.server_socket.recvfrom(self.buffer_size)
+                    if client_addr is not None:
+                        logger.info(f"Client found")
+                        logger.debug(f"Starting stream")
+                        break
+                except TimeoutError:
+                    pass
+            while self.is_running:
+                try:
+                    frame = self._get_frame()
+                    message_count = math.ceil(len(frame) / MAX_MESSAGE_SIZE)
+                    print(len(frame))
+                    print(message_count)
+                    self.server_socket.sendto(message_count.to_bytes(5, 'big'), client_addr)
+                    if message_count == 1:
+                        self.server_socket.sendto(frame, client_addr)
+                        check_alive = self.server_socket.recv(4)
+                        if not check_alive == b"ping":
+                            logger.debug("Ping was invalid")
+                            break
+                    else:
+                        for i in range(message_count):
+                            start = i * MAX_MESSAGE_SIZE
+                            if i == len(frame) - 1:
+                                self.server_socket.sendto(frame[start:], client_addr)
+                            else:
+                                end = (i + 1) * MAX_MESSAGE_SIZE
+                                self.server_socket.sendto(frame[start:end], client_addr)
+                            check_alive = self.server_socket.recv(4)
+                            if not check_alive == b"ping":
+                                logger.debug("Ping was invalid")
+                                break
+                except TimeoutError:
+                    logger.debug("Socket timeout waiting for ping")
+                    break
+                except OSError as e:
+                    logger.debug("Socket error")
+                    logger.debug(e)
+                    break
+                time.sleep(1 / 30)
+            logger.info("Closing socket")
+            try:
+                self.server_socket.shutdown(socket.SHUT_RDWR)
+            except (OSError, TimeoutError):
+                pass
+            self.server_socket.close()

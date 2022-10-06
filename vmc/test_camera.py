@@ -3,26 +3,28 @@ from threading import Thread
 
 import cv2
 
-from vmc import frame_server, stream
+from vmc import frame_server
 from vmc.mqtt_client import MQTTClient
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(4)
 client = MQTTClient.get()
 client.connect()
+
+s: frame_server.FrameServer
 
 
 def run():
     while True:
         try:
-            _, frame = cap.read()
-            frame = stream.image_resize(frame, height = 144)
-            success, encoded_frame = stream.encode_frame(frame, (int(cv2.IMWRITE_JPEG_QUALITY), 35))
+            success, frame = cap.read()
             if success:
-                frame_server.update_csi(encoded_frame)
-            time.sleep(1/60)
+                s.update_frame(frame, frame_server.CameraType.CSI, 90, 720)
+            time.sleep(1/120)
         finally:
             pass
 
 
-frame_server.run()
-Thread(target = run).start()
+if __name__ == '__main__':
+    s = frame_server.FrameServer()
+    s.start()
+    Thread(target = run, daemon = True).start()
