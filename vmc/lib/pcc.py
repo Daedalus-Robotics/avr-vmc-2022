@@ -89,16 +89,18 @@ class PeripheralControlComputer:
 
     def _send(self, data: bytes) -> bool:
         if self.is_connected:
-            self.dev.write(data)
-            self._send_queue()
-            return True
-        else:
             try:
-                logger.debug("PCC not connected, adding to queue")
-                self.command_queue.put(data, block = False, timeout = 0)
-            except queue.Full:
-                logger.warning("PCC write queue full")
-            return False
+                self.dev.write(data)
+                self._send_queue()
+                return True
+            except SerialException:
+                pass
+        try:
+            logger.debug("PCC not connected, adding to queue")
+            self.command_queue.put(data, block = False, timeout = 0)
+        except queue.Full:
+            logger.warning("PCC write queue full")
+        return False
 
     def _send_queue(self) -> None:
         if self.is_connected:
@@ -113,7 +115,8 @@ class PeripheralControlComputer:
                 except SerialException:
                     logger.warning("Failed to write to PCC")
                     break
-            logger.debug(f"Flushed {count} messages from command queue")
+            if count > 0:
+                logger.debug(f"Flushed {count} messages from command queue")
 
     def set_base_color(self, wrgb: List[int]) -> None:
         command = self.commands["SET_BASE_COLOR"]
