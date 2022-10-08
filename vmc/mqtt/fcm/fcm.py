@@ -1,6 +1,6 @@
 import asyncio
 
-from fcc_library import FlightControlComputer, PyMAVLinkAgent
+from vmc.mqtt.fcm.fcc_library import FlightControlComputer, PyMAVLinkAgent
 
 
 class FlightControlModule:
