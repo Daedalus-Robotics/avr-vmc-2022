@@ -14,7 +14,7 @@ from loguru import logger
 from serial import SerialException
 
 PLATFORM = Detector()
-DEFAULT_DEVICE_TYPE = "something" if PLATFORM.board in (Board.any_jetson_board, Board.any_raspberry_pi) else "tty.usbmodem"
+DEFAULT_DEVICE_TYPE = "ttyACM" if True in (PLATFORM.board.any_jetson_board, PLATFORM.board.any_raspberry_pi) else "tty.usbmodem"
 
 
 class PeripheralControlComputer:

@@ -9,6 +9,7 @@ opencv-python~=4.6.0.66
 paho-mqtt~=1.6.1
 scipy~=1.9.1
 pyserial~=3.5
-Jetson.GPIO~=2.0.19
+Jetson.GPIO==2.0.20
 adafruit-circuitpython-amg88xx~=1.2.18
 bell-avr-libraries[mqtt,serial]==0.1.9
+adafruit-circuitpython-neopixel-spi==1.0.5
