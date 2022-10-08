@@ -30,6 +30,9 @@ class PeripheralControlComputer:
         self.HEADER_OUTGOING = (*self.PREAMBLE, 0x3C)
         self.HEADER_INCOMING = (*self.PREAMBLE, 0x3E)
 
+        self.servo_min_values = {}
+        self.servo_max_values = {}
+
         self.commands = {
             "SET_SERVO_OPEN_CLOSE": 0,
             "SET_SERVO_MIN": 1,
@@ -43,9 +46,15 @@ class PeripheralControlComputer:
             "SET_LASER_OFF": 9,
             "RESET_AVR_PERIPH": 10,
             "CHECK_SERVO_CONTROLLER": 11,
+            "SET_ONBOARD_BASE_COLOR": 12,
+            "SET_ONBOARD_TEMP_COLOR": 13,
+            "COLOR_WIPE": 14,
+            "FIRE_LASER_COUNT": 15,
+            "SET_SERVO_ABS_LIMIT": 16
         }
 
         self.shutdown: bool = False
+        self.serial_error: bool = False
         self.port_thread = Thread(target = self._port_loop, daemon = True).start()
         atexit.register(self.__atexit__)
 
@@ -54,7 +63,7 @@ class PeripheralControlComputer:
 
     @property
     def is_connected(self) -> bool:
-        return self.dev.is_open and os.path.exists(self.dev.port)
+        return self.dev.is_open and os.path.exists(self.dev.port) and not self.serial_error
 
     def _port_loop(self) -> None:
         first_connection = True
@@ -73,6 +82,7 @@ class PeripheralControlComputer:
                         try:
                             self.dev.open()
                             logger.info("PCC Connected")
+                            self.serial_error = False
                             connected = True
                             self._send_queue()
                             break
@@ -94,7 +104,7 @@ class PeripheralControlComputer:
                 self._send_queue()
                 return True
             except SerialException:
-                pass
+                self.serial_error = True
         try:
             logger.debug("PCC not connected, adding to queue")
             self.command_queue.put(data, block = False, timeout = 0)
@@ -114,6 +124,7 @@ class PeripheralControlComputer:
                     break
                 except SerialException:
                     logger.warning("Failed to write to PCC")
+                    self.serial_error = True
                     break
             if count > 0:
                 logger.debug(f"Flushed {count} messages from command queue")
@@ -187,14 +198,16 @@ class PeripheralControlComputer:
         data = []
 
         if isinstance(minimum, (float, int)):
-            if 1000 > minimum > 0:
-                valid_command = True
-                data = [servo, minimum]
+            uint16_absolute = ctypes.c_uint16(minimum).value
+            uint8_absolute_high = (uint16_absolute >> 8) & 0xFF
+            uint8_absolute_low = uint16_absolute & 0xFF
+            valid_command = True
+            data = [servo, int(uint8_absolute_high), int(uint8_absolute_low)]
 
         if not valid_command:
             return
 
-        length = 3
+        length = 4
         data = self._construct_payload(command, length, data)
 
         logger.debug(f"Setting servo min: {data}")
@@ -207,14 +220,16 @@ class PeripheralControlComputer:
         data = []
 
         if isinstance(maximum, (float, int)):
-            if 1000 > maximum > 0:
-                valid_command = True
-                data = [servo, maximum]
+            uint16_absolute = ctypes.c_uint16(maximum).value
+            uint8_absolute_high = (uint16_absolute >> 8) & 0xFF
+            uint8_absolute_low = uint16_absolute & 0xFF
+            valid_command = True
+            data = [servo, int(uint8_absolute_high), int(uint8_absolute_low)]
 
         if not valid_command:
             return
 
-        length = 3
+        length = 4
         data = self._construct_payload(command, length, data)
 
         logger.debug(f"Setting servo max: {data}")
@@ -262,14 +277,32 @@ class PeripheralControlComputer:
         logger.debug(f"Setting servo absolute: {data}")
         self._send(data)
 
-    def fire_laser(self) -> None:
-        command = self.commands["FIRE_LASER"]
+    def disable_servo(self, servo: int):
+        self.set_servo_abs(servo, 0)
 
-        length = 1
-        data = self._construct_payload(command, length)
+    def fire_laser(self, count: int = 1, hold: bool = False) -> bool:
+        if count == 1:
+            command = self.commands["FIRE_LASER"]
+            data = self._construct_payload(command, 1)
 
-        logger.debug(f"Setting the laser on: {data}")
-        self._send(data)
+            logger.debug(f"Firing the laser: {data}")
+            self._send(data)
+            return True
+        elif count > 1:
+            command = self.commands["FIRE_LASER_COUNT"]
+            data = self._construct_payload(command, 2, [count])
+
+            logger.debug(f"Firing the laser {count} times: {data}")
+            self._send(data)
+            if hold:
+                self.dev.timeout = float(count + 2)
+                try:
+                    self.dev.read_all()
+                    if b"FLC" not in self.dev.read_until(b"\n"):
+                        return False
+                except TimeoutError:
+                    return False
+            return True
 
     def set_laser_on(self) -> None:
         command = self.commands["SET_LASER_ON"]
@@ -311,9 +344,47 @@ class PeripheralControlComputer:
         logger.debug(f"Checking servo controller: {data}")
         self._send(data)
 
-    def _construct_payload(
-        self, code: int, size: int = 0, data: Optional[list] = None
-    ) -> bytes:
+    def set_onboard_base_color(self, rgb: List[int]) -> None:
+        command = self.commands["SET_ONBOARD_BASE_COLOR"]
+
+        # rgb + code = 4
+        if len(rgb) != 3:
+            rgb = [0, 0, 0]
+
+        for i, color in enumerate(rgb):
+            if not isinstance(color, int) or color > 255 or color < 0:
+                rgb[i] = 0
+
+        data = self._construct_payload(command, 1 + len(rgb), rgb)
+
+        logger.debug(f"Setting base color: {data}")
+        self._send(data)
+
+    def set_onboard_temp_color(self, rgb: List[int], length: float = 0.5) -> None:
+        command = self.commands["SET_ONBOARD_TEMP_COLOR"]
+
+        # rgb + code = 4
+        if len(rgb) != 3:
+            rgb = [0, 0, 0]
+
+        for i, color in enumerate(rgb):
+            if not isinstance(color, int) or color > 255 or color < 0:
+                rgb[i] = 0
+
+        time_bytes = self.list_pack("<f", length)
+        data = self._construct_payload(
+            command, 1 + len(rgb) + len(time_bytes), rgb + time_bytes
+        )
+
+        logger.debug(f"Setting temp color: {data}")
+        self._send(data)
+
+    def color_wipe(self, delay: int):
+        command = self.commands["COLOR_WIPE"]
+        data = self._construct_payload(command, 2, [delay])
+        self._send(data)
+
+    def _construct_payload(self, code: int, size: int = 0, data: Optional[list] = None) -> bytes:
         # [$][P][>][LENGTH-HI][LENGTH-LOW][DATA][CRC]
         payload = bytes()
 
