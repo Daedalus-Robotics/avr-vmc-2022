@@ -30,10 +30,12 @@ from mavsdk.mission_raw import MissionItem, MissionRawError
 from mavsdk.offboard import VelocityBodyYawspeed, VelocityNedYaw
 from pymavlink import mavutil
 
+from vmc.mqtt_client import MQTTClient
 
-class FCMMQTTModule(MQTTModule):
+
+class FCMMQTTModule:
     def __init__(self) -> None:
-        super().__init__()
+        self.client = MQTTClient.get()
 
     @try_except()
     def _publish_event(self, name: str, payload: str = "") -> None:
@@ -44,7 +46,7 @@ class FCMMQTTModule(MQTTModule):
             name=name,
             payload=payload,
         )
-        self.send_message("avr/fcm/events", event)
+        self.client.send_message("avr/fcm/events", event)
 
 
 class DispatcherBusy(Exception):
@@ -264,7 +266,7 @@ class FlightControlComputer(FCMMQTTModule):
                 soc=battery.remaining_percent * 100.0,
             )
 
-            self.send_message("avr/fcm/battery", update)
+            self.client.send_message("avr/fcm/battery", update)
 
     @async_try_except()
     async def in_air_telemetry(self) -> None:
@@ -298,7 +300,7 @@ class FlightControlComputer(FCMMQTTModule):
                 mode=str(self.fcc_mode),
             )
 
-            self.send_message("avr/fcm/status", update)
+            self.client.send_message("avr/fcm/status", update)
 
     @async_try_except()
     async def landed_state_telemetry(self) -> None:
@@ -358,7 +360,7 @@ class FlightControlComputer(FCMMQTTModule):
                 armed=self.is_armed,
             )
 
-            self.send_message("avr/fcm/status", update)
+            self.client.send_message("avr/fcm/status", update)
 
             if mode != fcc_mode:
                 if mode in fcc_mode_map:
@@ -383,7 +385,7 @@ class FlightControlComputer(FCMMQTTModule):
 
             update = AvrFcmLocationLocalPayload(dX=n, dY=e, dZ=d)
 
-            self.send_message("avr/fcm/location/local", update)
+            self.client.send_message("avr/fcm/location/local", update)
 
     @async_try_except()
     async def position_lla_telemetry(self) -> None:
@@ -399,7 +401,7 @@ class FlightControlComputer(FCMMQTTModule):
                 hdg=self.heading,
             )
 
-            self.send_message("avr/fcm/location/global", update)
+            self.client.send_message("avr/fcm/location/global", update)
 
     @async_try_except()
     async def home_lla_telemetry(self) -> None:
@@ -414,7 +416,7 @@ class FlightControlComputer(FCMMQTTModule):
                 alt=home_position.relative_altitude_m,
             )
 
-            self.send_message("avr/fcm/location/home", update)
+            self.client.send_message("avr/fcm/location/home", update)
 
     @async_try_except()
     async def attitude_euler_telemetry(self) -> None:
@@ -442,7 +444,7 @@ class FlightControlComputer(FCMMQTTModule):
 
             # publish telemetry every tenth of a second
             rate_limit(
-                lambda: self.send_message("avr/fcm/attitude/euler", update),
+                lambda: self.client.send_message("avr/fcm/attitude/euler", update),
                 frequency=10,
             )
 
@@ -460,7 +462,7 @@ class FlightControlComputer(FCMMQTTModule):
                 vZ=velocity.down_m_s,
             )
 
-            self.send_message("avr/fcm/velocity", update)
+            self.client.send_message("avr/fcm/velocity", update)
 
     @async_try_except()
     async def gps_info_telemetry(self) -> None:
@@ -474,7 +476,7 @@ class FlightControlComputer(FCMMQTTModule):
                 fix_type=str(gps_info.fix_type),
             )
 
-            self.send_message("avr/fcm/gps_info", update)
+            self.client.send_message("avr/fcm/gps_info", update)
 
     # endregion ###############################################################
 
@@ -946,13 +948,14 @@ class MissionAPI(FCMMQTTModule):
         await self.start()
 
 
-class PyMAVLinkAgent(MQTTModule):
+class PyMAVLinkAgent:
     def __init__(self) -> None:
-        super().__init__()
+        self.client = MQTTClient.get()
 
         self.topic_map = {
             "avr/fusion/hil_gps": self.hilgps_msg_handler,
         }
+        self.client.register_topic_map(self.topic_map)
 
         self.num_frames = 0
 
@@ -971,7 +974,7 @@ class PyMAVLinkAgent(MQTTModule):
         self.mavcon.wait_heartbeat()
         logger.success("Mavlink heartbeat received")
 
-        super().run_non_blocking()
+        # super().run_non_blocking()
 
     @try_except(reraise=True)
     def hilgps_msg_handler(self, payload: AvrFusionHilGpsPayload) -> None:
@@ -1000,7 +1003,7 @@ class PyMAVLinkAgent(MQTTModule):
 
         # publish stats every second
         rate_limit(
-            lambda: self.send_message(
+            lambda: self.client.send_message(
                 "avr/fcm/hil_gps_stats",
                 AvrFcmHilGpsStatsPayload(num_frames=self.num_frames),
             ),
