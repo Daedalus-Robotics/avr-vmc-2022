@@ -1,10 +1,7 @@
-from __future__ import annotations
-
 import json
 import time
 from threading import Thread
 
-import numpy as np
 from loguru import logger
 from paho.mqtt import client as mqtt
 
@@ -63,7 +60,7 @@ class MQTTClient:
         if self.retry and rc is not mqtt.DISCONNECT:
             Thread(target = self._reconnect_loop).start()
 
-    def _reconnect_loop(self):
+    def _reconnect_loop(self) -> None:
         while not self.is_connected:
             self.connect()
             time.sleep(2)
@@ -73,7 +70,7 @@ class MQTTClient:
             try:
                 self.topic_map[msg.topic](json.loads(msg.payload))
             except (AttributeError, TypeError, json.JSONDecodeError) as e:
-                logger.warning(f"Filed to run callback for topic { msg.topic }")
+                logger.warning(f"Filed to run callback for topic {msg.topic}")
                 logger.warning(e)
 
     def send_message(self, topic: str, payload: any) -> bool:
