@@ -8,7 +8,7 @@ from struct import pack
 from threading import Thread
 from typing import Any, List, Literal, Optional, Union
 
-from adafruit_platformdetect import Detector, Board
+from adafruit_platformdetect import Detector
 from bell.avr.mqtt.payloads import (
     AvrPcmFireLaserPayload,
     AvrPcmSetBaseColorPayload,
@@ -28,12 +28,14 @@ from serial import SerialException
 from vmc.mqtt_client import MQTTClient
 
 PLATFORM = Detector()
-DEFAULT_DEVICE_TYPE = "ttyACM" if True in (PLATFORM.board.any_jetson_board, PLATFORM.board.any_raspberry_pi) else "tty.usbmodem"
+DEFAULT_DEVICE_TYPE = "ttyACM" if True in (
+    PLATFORM.board.any_jetson_board, PLATFORM.board.any_raspberry_pi
+) else "tty.usbmodem"
 
 
 class PeripheralControlComputer:
     def __init__(self, device_type: str = DEFAULT_DEVICE_TYPE) -> None:
-        self.module: PeripheralControlModule = None
+        self.module: PeripheralControlModule | None = None
         self.dev_type = device_type
 
         self.dev = SerialLoop()
@@ -148,8 +150,9 @@ class PeripheralControlComputer:
         if self.module is None:
             self.module = PeripheralControlModule(self)
 
-    def set_base_color(self, wrgb: List[int]) -> None:
+    def set_base_color(self, wrgb: list[int] | tuple[int]) -> None:
         command = self.commands["SET_BASE_COLOR"]
+        wrgb = list(wrgb)
 
         # wrgb + code = 5
         if len(wrgb) != 4:
@@ -164,8 +167,9 @@ class PeripheralControlComputer:
         logger.debug(f"Setting base color: {data}")
         self._send(data)
 
-    def set_temp_color(self, wrgb: List[int], length: float = 0.5) -> None:
+    def set_temp_color(self, wrgb: list[int] | tuple[int], length: float = 0.5) -> None:
         command = self.commands["SET_TEMP_COLOR"]
+        wrgb = list(wrgb)
 
         # wrgb + code = 5
         if len(wrgb) != 4:
@@ -177,15 +181,13 @@ class PeripheralControlComputer:
 
         time_bytes = self.list_pack("<f", length)
         data = self._construct_payload(
-            command, 1 + len(wrgb) + len(time_bytes), wrgb + time_bytes
+                command, 1 + len(wrgb) + len(time_bytes), wrgb + time_bytes
         )
 
         logger.debug(f"Setting temp color: {data}")
         self._send(data)
 
-    def set_servo_open_close(
-        self, servo: int, action: Literal["open", "close"]
-    ) -> None:
+    def set_servo_open_close(self, servo: int, action: Literal["open", "close"]) -> None:
         valid_command = False
 
         command = self.commands["SET_SERVO_OPEN_CLOSE"]
@@ -210,13 +212,13 @@ class PeripheralControlComputer:
         logger.debug(f"Setting servo open/close: {data}")
         self._send(data)
 
-    def set_servo_min(self, servo: int, minimum: float) -> None:
+    def set_servo_min(self, servo: int, minimum: int) -> None:
         valid_command = False
 
         command = self.commands["SET_SERVO_MIN"]
         data = []
 
-        if isinstance(minimum, (float, int)):
+        if isinstance(minimum, int):
             uint16_absolute = ctypes.c_uint16(minimum).value
             uint8_absolute_high = (uint16_absolute >> 8) & 0xFF
             uint8_absolute_low = uint16_absolute & 0xFF
@@ -232,13 +234,13 @@ class PeripheralControlComputer:
         logger.debug(f"Setting servo min: {data}")
         self._send(data)
 
-    def set_servo_max(self, servo: int, maximum: float) -> None:
+    def set_servo_max(self, servo: int, maximum: int) -> None:
         valid_command = False
 
         command = self.commands["SET_SERVO_MAX"]
         data = []
 
-        if isinstance(maximum, (float, int)):
+        if isinstance(maximum, int):
             uint16_absolute = ctypes.c_uint16(maximum).value
             uint8_absolute_high = (uint16_absolute >> 8) & 0xFF
             uint8_absolute_low = uint16_absolute & 0xFF
@@ -363,8 +365,9 @@ class PeripheralControlComputer:
         logger.debug(f"Checking servo controller: {data}")
         self._send(data)
 
-    def set_onboard_base_color(self, rgb: List[int]) -> None:
+    def set_onboard_base_color(self, rgb: list[int] | tuple[int]) -> None:
         command = self.commands["SET_ONBOARD_BASE_COLOR"]
+        rgb = list(rgb)
 
         # rgb + code = 4
         if len(rgb) != 3:
@@ -379,8 +382,9 @@ class PeripheralControlComputer:
         logger.debug(f"Setting base color: {data}")
         self._send(data)
 
-    def set_onboard_temp_color(self, rgb: List[int], length: float = 0.5) -> None:
+    def set_onboard_temp_color(self, rgb: list[int] | tuple[int], length: float = 0.5) -> None:
         command = self.commands["SET_ONBOARD_TEMP_COLOR"]
+        rgb = list(rgb)
 
         # rgb + code = 4
         if len(rgb) != 3:
@@ -392,7 +396,7 @@ class PeripheralControlComputer:
 
         time_bytes = self.list_pack("<f", length)
         data = self._construct_payload(
-            command, 1 + len(rgb) + len(time_bytes), rgb + time_bytes
+                command, 1 + len(rgb) + len(time_bytes), rgb + time_bytes
         )
 
         logger.debug(f"Setting temp color: {data}")
@@ -473,12 +477,12 @@ class PeripheralControlModule:
 
     def set_base_color(self, payload: AvrPcmSetBaseColorPayload) -> None:
         wrgb = payload["wrgb"]
-        self.pcc.set_base_color(wrgb=list(wrgb))
+        self.pcc.set_base_color(wrgb = list(wrgb))
 
     def set_temp_color(self, payload: AvrPcmSetTempColorPayload) -> None:
         wrgb = payload["wrgb"]
-        time = payload.get("time", 0.5)  # default of 0.5 seconds
-        self.pcc.set_temp_color(wrgb=list(wrgb), length =time)
+        length = payload.get("time", 0.5)  # default of 0.5 seconds
+        self.pcc.set_temp_color(wrgb = list(wrgb), length = length)
 
     def set_servo_open_close(self, payload: AvrPcmSetServoOpenClosePayload) -> None:
         servo = payload["servo"]
