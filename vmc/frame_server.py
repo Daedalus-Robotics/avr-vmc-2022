@@ -53,13 +53,21 @@ class FrameServer:
 
         self.client.register_callback("avr/camera/restart", self.restart)
 
-    def update_frame(self, frame: np.ndarray, camera_type: CameraType, compression_level: int, height: int = None) -> bool:
+    def update_frame(self,
+                     frame: np.ndarray,
+                     camera_type: CameraType,
+                     compression_level: int,
+                     height: int = None
+                     ) -> bool:
         if height is None:
             height = frame.shape[0]
         # noinspection PyBroadException
         try:
             resized_frame = stream.image_resize(frame, height = height)
-            success, encoded_frame = stream.encode_frame(resized_frame, (int(cv2.IMWRITE_JPEG_QUALITY), compression_level))
+            success, encoded_frame = stream.encode_frame(
+                    resized_frame,
+                    (int(cv2.IMWRITE_JPEG_QUALITY), compression_level)
+            )
             if success:
                 self.cameras[camera_type] = encoded_frame
         except Exception:
@@ -79,7 +87,7 @@ class FrameServer:
         if hold and self.server_thread is not None:
             self.server_thread.join()
 
-    def restart(self, _ = None):
+    def restart(self, _ = None) -> None:
         self.stop(True)
         self.start()
 
