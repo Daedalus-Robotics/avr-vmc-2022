@@ -14,7 +14,7 @@ class FlightControlModule:
     async def run(self) -> None:
         self.gps_fcc.run_non_blocking()
 
-        asyncio.gather(self.fcc.run_non_blocking())
+        await asyncio.gather(self.fcc.run_non_blocking())
 
         while True:
             await asyncio.sleep(1)
