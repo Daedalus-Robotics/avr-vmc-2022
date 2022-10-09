@@ -150,7 +150,7 @@ class PeripheralControlComputer:
         if self.module is None:
             self.module = PeripheralControlModule(self)
 
-    def set_base_color(self, wrgb: list[int] | tuple[int]) -> None:
+    def set_base_color(self, wrgb: list[int] | tuple[int, int, int, int]) -> None:
         command = self.commands["SET_BASE_COLOR"]
         wrgb = list(wrgb)
 
@@ -167,7 +167,7 @@ class PeripheralControlComputer:
         logger.debug(f"Setting base color: {data}")
         self._send(data)
 
-    def set_temp_color(self, wrgb: list[int] | tuple[int], length: float = 0.5) -> None:
+    def set_temp_color(self, wrgb: list[int] | tuple[int, int, int, int], length: float = 0.5) -> None:
         command = self.commands["SET_TEMP_COLOR"]
         wrgb = list(wrgb)
 
@@ -365,7 +365,7 @@ class PeripheralControlComputer:
         logger.debug(f"Checking servo controller: {data}")
         self._send(data)
 
-    def set_onboard_base_color(self, rgb: list[int] | tuple[int]) -> None:
+    def set_onboard_base_color(self, rgb: list[int] | tuple[int, int, int, int]) -> None:
         command = self.commands["SET_ONBOARD_BASE_COLOR"]
         rgb = list(rgb)
 
@@ -382,7 +382,7 @@ class PeripheralControlComputer:
         logger.debug(f"Setting base color: {data}")
         self._send(data)
 
-    def set_onboard_temp_color(self, rgb: list[int] | tuple[int], length: float = 0.5) -> None:
+    def set_onboard_temp_color(self, rgb: list[int] | tuple[int, int, int, int], length: float = 0.5) -> None:
         command = self.commands["SET_ONBOARD_TEMP_COLOR"]
         rgb = list(rgb)
 
