@@ -7,7 +7,7 @@ pymap3d~=2.9.1
 colour~=0.1.5
 opencv-python~=4.6.0.66
 paho-mqtt~=1.6.1
-scipy~=1.9.1
+scipy==1.9.2
 pyserial~=3.5
 Jetson.GPIO==2.0.20
 adafruit-circuitpython-amg88xx~=1.2.18
