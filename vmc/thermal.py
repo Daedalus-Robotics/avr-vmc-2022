@@ -8,8 +8,8 @@ from loguru import logger
 from colour import Color
 from scipy.interpolate import griddata
 
-from utils import map, constrain
-from vmc import stream
+from .utils import map, constrain
+from . import stream
 from vmc.mqtt_client import MQTTClient
 from adafruit_platformdetect import Detector as PlatformDetector
 
@@ -33,12 +33,10 @@ COLORS = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in COL
 ENCODING_PARAMS = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
 
-client = MQTTClient.get()
-client.connect()
-
-
 class ThermalCamera:
     def __init__(self):
+        self.client = MQTTClient.get()
+
         self.bgr_frame = None
         self.hsv_frame = None
 
@@ -57,24 +55,23 @@ class ThermalCamera:
             pixels = np.zeros((8, 8, 1), np.uint8)
             for row_num in range(8):
                 for pixel_num in range(8):
-                    temp = randint(0, 80)
-                    pixels[pixel_num, row_num] = temp
+                    pixels[pixel_num, row_num] = randint(0, 80)
         return pixels
 
     def get_frame(self, color = False) -> np.ndarray:
         return self.bgr_frame if color else self.hsv_frame
 
-    def update_frame(self, enable_interpolation = True) -> None:
+    def update_frame(self, enable_interpolation = False) -> None:
         size = 240 if enable_interpolation else 8
         rgb_frame = np.zeros((size, size, 3), np.uint8)
         hsv_frame = np.zeros((size, size, 3), np.uint8)
 
-        print("1: ", self.pixels)
-        print("2: ", POINTS)
-        pixels = griddata(POINTS, self.pixels, (GRID_X, GRID_Y), method="cubic")
+        # print("1: ", self.pixels)
+        # print("2: ", POINTS)
+        # pixels = griddata(POINTS, self.pixels, (GRID_X, GRID_Y), method="cubic")
 
         y = 0
-        for row in pixels:
+        for row in self.pixels:
             x = 0
             for pixel in row:
                 color_index = int(constrain(map(pixel, 0, 80, 0, COLORDEPTH - 1), 0, COLORDEPTH - 1))
@@ -99,14 +96,11 @@ class ThermalCamera:
             time.sleep(1/30)
 
     def _stream(self):
-        if client.is_connected:
+        if self.client.is_connected:
             frame = self.get_frame(color = True)
-            cv2.imshow("frame", frame)
-            cv2.waitKey(1)
             encoded_frame = stream.encode_frame_uncompressed(frame)
-            client.send_message("avr/thermal/reading", encoded_frame)
+            self.client.send_message("avr/thermal/reading", encoded_frame)
 
 
 if __name__ == "__main__":
     thermal = ThermalCamera()
-    thermal._update_loop()
