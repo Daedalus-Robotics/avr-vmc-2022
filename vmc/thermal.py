@@ -2,16 +2,17 @@ import time
 from random import randint
 from threading import Thread
 
-import numpy as np
 import cv2
-from loguru import logger
-from colour import Color
-from scipy.interpolate import griddata
-
-from .utils import map, constrain
-from . import stream
-from vmc.mqtt_client import MQTTClient
+import numpy as np
 from adafruit_platformdetect import Detector as PlatformDetector
+from colour import Color
+from loguru import logger
+
+from vmc.mqtt_client import MQTTClient
+from . import stream
+from .utils import constrain, map
+
+# from scipy.interpolate import griddata
 
 platform_detector = PlatformDetector()
 TESTING = not (platform_detector.board.any_raspberry_pi or platform_detector.board.any_jetson_board)
@@ -34,7 +35,7 @@ ENCODING_PARAMS = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
 
 class ThermalCamera:
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = MQTTClient.get()
 
         self.bgr_frame = None
@@ -86,16 +87,16 @@ class ThermalCamera:
         self.bgr_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
         self.hsv_frame = hsv_frame
 
-    def _update_loop(self):
+    def _update_loop(self) -> None:
         counter = 0
         while True:
             self.update_frame()
             if counter == 0:
                 self._stream()
             counter = (counter + 1) % 3
-            time.sleep(1/30)
+            time.sleep(1 / 30)
 
-    def _stream(self):
+    def _stream(self) -> None:
         if self.client.is_connected:
             frame = self.get_frame(color = True)
             encoded_frame = stream.encode_frame_uncompressed(frame)
