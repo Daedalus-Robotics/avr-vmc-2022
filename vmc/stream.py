@@ -5,7 +5,7 @@ import numpy as np
 DEFAULT_PARAMS = (int(cv2.IMWRITE_JPEG_QUALITY), 90)
 
 
-def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
+def image_resize(image: np.ndarray, width: int = None, height: int = None, inter: int = cv2.INTER_AREA) -> np.ndarray:
     dim = None
     (h, w) = image.shape[:2]
 
@@ -34,8 +34,7 @@ def encode_frame(frame: np.ndarray, params: list = DEFAULT_PARAMS) -> (bool, byt
 
 
 def encode_frame_uncompressed(frame: np.ndarray) -> str:
-    encoded_frame = frame.dumps()
-    return encoded_frame
+    return frame.dumps()
 
 
 def decode_frame(encoded_frame: bytes) -> (bool, np.ndarray):
