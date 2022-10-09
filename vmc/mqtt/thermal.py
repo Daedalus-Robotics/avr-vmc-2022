@@ -9,7 +9,9 @@ from loguru import logger
 
 
 class ThermalModule(MQTTModule):
+    @DeprecationWarning
     def __init__(self):
+        logger.warning("ThermalModule is deprecated, use ThermalCamera instead")
         super().__init__()
 
         logger.debug("Connecting to thermal camera...")
