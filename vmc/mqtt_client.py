@@ -96,6 +96,10 @@ class MQTTClient:
                 logger.success(f"Subscribed to: {topic}")
         return return_val
 
+    def register_topic_map(self, topic_map: dict):
+        for topic, callback in topic_map.items():
+            self.register_callback(topic, callback)
+
 
 def is_serializable(x) -> (bool, str):
     try:
