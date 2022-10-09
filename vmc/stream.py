@@ -24,7 +24,7 @@ def image_resize(image: np.ndarray, width: int = None, height: int = None, inter
     return resized
 
 
-def encode_frame(frame: np.ndarray, params: list = DEFAULT_PARAMS) -> (bool, bytes):
+def encode_frame(frame: np.ndarray, params: list[int] | tuple[int] = DEFAULT_PARAMS) -> (bool, bytes):
     result, jpeg_frame = cv2.imencode('.jpg', frame, params)
     if result:
         encoded_frame = jpeg_frame.dumps()
