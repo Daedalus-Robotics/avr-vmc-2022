@@ -15,8 +15,9 @@ class Status:
             self.statuses[name] = initial_value
 
     def update_status(self, name: str, value: bool) -> None:
-        self.statuses[name] = value
-        self.send_update()
+        if name in self.statuses:
+            self.statuses[name] = value
+            self.send_update()
 
     def send_update(self, _: Any = None) -> None:
         self.client.send_message("avr/status/update", self.statuses, qos = 2, retain = True)
