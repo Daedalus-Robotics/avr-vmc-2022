@@ -13,7 +13,7 @@ class MQTTClient:
     _instance = None
 
     @classmethod
-    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True) -> MQTTClient:
+    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True) -> 'MQTTClient':
         if cls._instance is None:
             cls._instance = MQTTClient(host, port, retry)
         return cls._instance
