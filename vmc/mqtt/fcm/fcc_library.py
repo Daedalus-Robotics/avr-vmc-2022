@@ -790,9 +790,7 @@ class PyMAVLinkAgent:
 
         # publish stats every second
         rate_limit(
-                lambda: self.client.send_message(
-                        "avr/fcm/hil_gps_stats",
-                        AvrFcmHilGpsStatsPayload(num_frames = self.num_frames),
-                ),
+                lambda: self.client.send_message("avr/fcm/hil_gps_stats",
+                                                 AvrFcmHilGpsStatsPayload(num_frames = self.num_frames)),
                 frequency = 1,
         )
