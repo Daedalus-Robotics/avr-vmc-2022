@@ -367,10 +367,6 @@ class PeripheralControlComputer:
         logger.debug(f"Resetting the PCC: {data}")
         self._send(data)
 
-        self.dev.close()
-        time.sleep(5)
-        self.dev.open()
-
     def check_servo_controller(self) -> None:
         command = self.commands["CHECK_SERVO_CONTROLLER"]
 
