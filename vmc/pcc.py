@@ -133,7 +133,7 @@ class PeripheralControlComputer:
                 break
             time.sleep(1)
 
-    def _send(self, data: bytes) -> bool:
+    def _send(self, data: bytes, enable_queueing: bool = True) -> bool:
         if self.is_connected:
             try:
                 self.dev.write(data)
@@ -141,12 +141,16 @@ class PeripheralControlComputer:
                 return True
             except SerialException:
                 self.serial_error = True
-        try:
-            logger.debug("PCC not connected, adding to queue")
-            self.command_queue.put(data, block = False, timeout = 0)
-        except queue.Full:
-            logger.warning("PCC write queue full")
-        return False
+        else:
+            if enable_queueing:
+                try:
+                    logger.debug("PCC not connected, adding to queue")
+                    self.command_queue.put(data, block = False, timeout = 0)
+                except queue.Full:
+                    logger.warning("PCC write queue full")
+                return False
+            else:
+                logger.debug("PPC not connected, queueing is disabled for this method")
 
     def _send_queue(self) -> None:
         if self.is_connected:
@@ -365,7 +369,7 @@ class PeripheralControlComputer:
         data = self._construct_payload(command, length)
 
         logger.debug(f"Resetting the PCC: {data}")
-        self._send(data)
+        self._send(data, enable_queueing = False)
 
     def check_servo_controller(self) -> None:
         command = self.commands["CHECK_SERVO_CONTROLLER"]
