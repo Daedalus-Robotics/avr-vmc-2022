@@ -6,7 +6,7 @@ import time
 from queue import Queue
 from struct import pack
 from threading import Thread
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, Callable, List, Literal, Optional, Union
 
 from adafruit_platformdetect import Detector
 from bell.avr.mqtt.payloads import (
@@ -70,13 +70,26 @@ class PeripheralControlComputer:
             "SET_SERVO_ABS_LIMIT": 16
         }
 
+        self.on_state: Callable = lambda state: None
+
         self.shutdown: bool = False
         self.serial_error: bool = False
-        self.port_thread = Thread(target = self._port_loop, daemon = True).start()
+        self.port_thread: Thread | None = None
         atexit.register(self.__atexit__)
 
     def __atexit__(self) -> None:
         self.dev.close()
+
+    def begin(self) -> None:
+        if self.shutdown:
+            self.shutdown = False
+            self.port_thread = Thread(target = self._port_loop, daemon = True)
+            self.port_thread.start()
+
+    def end(self) -> None:
+        if self.shutdown:
+            self.shutdown = True
+            self.port_thread.join(5)
 
     @property
     def is_connected(self) -> bool:
@@ -84,11 +97,12 @@ class PeripheralControlComputer:
 
     def _port_loop(self) -> None:
         first_connection = True
-        previously_connected = False
+        previously_connected = self.is_connected
         while not self.shutdown:
             if not self.is_connected:
                 if previously_connected:
                     logger.info("PCC Disconnected")
+                    self.on_state(False)
                 self.dev.close()
                 dev_list = os.listdir("/dev")
                 connected = False
@@ -102,6 +116,7 @@ class PeripheralControlComputer:
                             self.serial_error = False
                             connected = True
                             self._send_queue()
+                            self.on_state(True)
                             break
                         except SerialException as e:
                             logger.exception(e)
@@ -112,7 +127,7 @@ class PeripheralControlComputer:
                 first_connection = False
             if self.shutdown:
                 break
-            time.sleep(2)
+            time.sleep(1)
 
     def _send(self, data: bytes) -> bool:
         if self.is_connected:
