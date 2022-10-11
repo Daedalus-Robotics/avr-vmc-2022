@@ -14,6 +14,7 @@ mavp2p: Service
 
 
 def restart_vmc() -> None:
+    pcc.color_wipe(60)
     pcc.end()
     status.register_status("pcc", False)
 
