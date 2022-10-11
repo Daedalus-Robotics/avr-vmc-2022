@@ -30,7 +30,7 @@ class MQTTClient:
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
 
-        self.topic_map: dict[str, tuple[Callable, bool, int, Any, Any]] = {}
+        self.topic_map: dict[str, tuple[Callable, bool, int, Any, Any, bool]] = {}
         self._connected = False
 
     @property
@@ -55,7 +55,7 @@ class MQTTClient:
         logger.debug(f"Connected with result {rc}")
 
         for topic, info in self.topic_map.items():
-            callback, _, qos, options, properties = info
+            _, _, qos, options, properties, _ = info
             self.client.subscribe(topic, qos = qos, options = options, properties = properties)
             logger.success(f"Subscribed to: {topic}")
 
@@ -73,11 +73,14 @@ class MQTTClient:
         if msg.topic in self.topic_map:
             try:
                 topic_tuple = self.topic_map[msg.topic]
-                callback = topic_tuple[0]
+                callback, is_json, _, _, _, use_args = topic_tuple
                 payload: dict | bytes = msg.payload
-                if topic_tuple[1]:
+                if is_json:
                     payload = json.loads(msg.payload)
-                callback(payload)
+                if use_args:
+                    callback(payload)
+                else:
+                    callback()
             except (AttributeError, TypeError, json.JSONDecodeError) as e:
                 logger.warning(f"Filed to run callback for topic {msg.topic}")
                 logger.warning(e)
@@ -95,11 +98,18 @@ class MQTTClient:
             return False
 
     def register_callback(
-            self, topic: str, callback: Callable, is_json: bool = True, qos: int = DEFAULT_QOS, options: Any = None, properties: Any = None
+            self,
+            topic: str,
+            callback: Callable,
+            is_json: bool = True,
+            qos: int = DEFAULT_QOS,
+            options: Any = None,
+            properties: Any = None,
+            use_args: bool = True
     ) -> bool:
         return_val = False
         if topic not in self.topic_map:
-            self.topic_map[topic] = (callback, is_json, qos, options, properties)
+            self.topic_map[topic] = (callback, is_json, qos, options, properties, use_args)
             return_val = True
             if self._connected:
                 self.client.subscribe(topic, qos = qos, options = options, properties = properties)
