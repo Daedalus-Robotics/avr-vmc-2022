@@ -91,6 +91,10 @@ class PeripheralControlComputer:
             self.shutdown = True
             self.port_thread.join(5)
 
+    def begin_mqtt(self) -> None:
+        if self.module is None:
+            self.module = PeripheralControlModule(self)
+
     @property
     def is_connected(self) -> bool:
         return self.dev.is_open and os.path.exists(self.dev.port) and not self.serial_error
@@ -160,10 +164,6 @@ class PeripheralControlComputer:
                     break
             if count > 0:
                 logger.debug(f"Flushed {count} messages from command queue")
-
-    def start_mqtt(self) -> None:
-        if self.module is None:
-            self.module = PeripheralControlModule(self)
 
     def set_base_color(self, wrgb: list[int] | tuple[int, int, int, int]) -> None:
         command = self.commands["SET_BASE_COLOR"]
