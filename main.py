@@ -22,7 +22,8 @@ def restart_vmc() -> None:
     pcc.end()
     status.register_status("pcc", False)
 
-    mavp2p.stop()
+    if not TESTING:
+        mavp2p.stop()
     status.register_status("mavp2p", False)
 
     status.update_status("vmc", False)
@@ -40,9 +41,12 @@ if __name__ == '__main__':
     pcc.begin()
     pcc.begin_mqtt()
 
-    mavp2p = Service("mavp2p.service")
-    status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart)
-    mavp2p.on_state = lambda state: status.update_status("mavp2p", state)
+    if TESTING:
+        status.register_status("mavp2p", True, lambda: None)
+    else:
+        mavp2p = Service("mavp2p.service")
+        status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart)
+        mavp2p.on_state = lambda state: status.update_status("mavp2p", state)
 
     status.register_status("vmc", True, restart_vmc)
 
