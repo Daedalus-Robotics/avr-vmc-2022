@@ -1,16 +1,18 @@
-# This is a sample Python script.
+from vmc.mqtt_client import MQTTClient
+from vmc.pcc import PeripheralControlComputer
+from vmc.status import Status
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+mqtt_client = MQTTClient.get("localhost", 1883, True)
+status = Status()
 
+pcc: PeripheralControlComputer
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    pcc = PeripheralControlComputer()
+    status.register_status("pcc", pcc.is_connected, pcc.reset)
+    pcc.on_state = lambda state: status.update_status("pcc", state)
+    pcc.begin()
+    pcc.begin_mqtt()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    mqtt_client.connect()
+    status.send_update()
