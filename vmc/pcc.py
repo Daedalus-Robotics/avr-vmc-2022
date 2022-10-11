@@ -72,7 +72,7 @@ class PeripheralControlComputer:
 
         self.on_state: Callable = lambda state: None
 
-        self.shutdown: bool = False
+        self.shutdown: bool = True
         self.serial_error: bool = False
         self.port_thread: Thread | None = None
         atexit.register(self.__atexit__)
