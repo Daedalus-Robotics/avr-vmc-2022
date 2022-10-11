@@ -1,10 +1,14 @@
 import subprocess
 
+from adafruit_platformdetect import Detector
 from systemctl import Service
 
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
+
+detector = Detector()
+TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
 
 mqtt_client = MQTTClient.get("localhost", 1883, True)
 status = Status()
@@ -23,7 +27,10 @@ def restart_vmc() -> None:
 
     status.update_status("vmc", False)
     mqtt_client.disconnect()
-    subprocess.Popen(["sleep", "8", ";sudo", "reboot"])
+    if TESTING:
+        subprocess.Popen(["echo", "The vmc would normally restart now"])
+    else:
+        subprocess.Popen(["sleep", "8", ";sudo", "reboot"])
 
 
 if __name__ == '__main__':
