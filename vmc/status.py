@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 
 from vmc.mqtt_client import MQTTClient
 
@@ -10,9 +10,16 @@ class Status:
 
         self.statuses: dict[str, bool] = {}
 
-    def register_status(self, name: str, initial_value: bool = False) -> None:
+    def register_status(self, name: str, initial_value: bool = False, restart_callback: Callable = None) -> None:
         if name not in self.statuses:
             self.statuses[name] = initial_value
+            if restart_callback is not None:
+                self.client.register_callback(
+                        f"avr/status/restart/{name}",
+                        restart_callback,
+                        is_json = False,
+                        use_args = False
+                )
 
     def update_status(self, name: str, value: bool) -> None:
         if name in self.statuses:
