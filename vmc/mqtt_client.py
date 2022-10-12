@@ -59,7 +59,7 @@ class MQTTClient:
             self.client.subscribe(topic, qos = qos, options = options, properties = properties)
             logger.success(f"Subscribed to: {topic}")
 
-    def _on_disconnect(self, _: mqtt.Client, __: Any, ___: dict, rc: int):
+    def _on_disconnect(self, _: mqtt.Client, __: Any, rc: int, ___: dict = None):
         logger.debug(f"Disconnected with result {rc}")
         if self.retry and rc is not mqtt.DISCONNECT:
             Thread(target = self._reconnect_loop).start()
