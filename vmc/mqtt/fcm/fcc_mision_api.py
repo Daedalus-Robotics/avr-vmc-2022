@@ -2,13 +2,30 @@ import asyncio
 from typing import List
 
 import mavsdk
-from bell.avr.utils.decorators import async_try_except
+from bell.avr.mqtt.payloads import AvrFcmEventsPayload
+from bell.avr.utils.decorators import async_try_except, try_except
 from loguru import logger
 from mavsdk.geofence import Point, Polygon
 from mavsdk.mission_raw import MissionItem, MissionRawError
 from pymavlink import mavutil
 
-from vmc.mqtt.fcm.fcc_library import FCMMQTTModule
+from vmc.mqtt_client import MQTTClient
+
+
+class FCMMQTTModule:
+    def __init__(self) -> None:
+        self.client = MQTTClient.get()
+
+    @try_except()
+    def _publish_event(self, name: str, payload: str = "") -> None:
+        """
+        Create and publish state machine event.
+        """
+        event = AvrFcmEventsPayload(
+                name = name,
+                payload = payload,
+        )
+        self.client.send_message("avr/fcm/events", event)
 
 
 class MissionAPI(FCMMQTTModule):
