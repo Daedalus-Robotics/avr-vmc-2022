@@ -1,4 +1,6 @@
+import atexit
 import subprocess
+import time
 
 from adafruit_platformdetect import Detector
 from systemctl import Service
@@ -17,7 +19,8 @@ pcc: PeripheralControlComputer
 mavp2p: Service
 
 
-def restart_vmc() -> None:
+@atexit.register
+def stop() -> None:
     pcc.color_wipe(60)
     pcc.end()
     status.register_status("pcc", False)
@@ -28,10 +31,12 @@ def restart_vmc() -> None:
 
     status.update_status("vmc", False)
     mqtt_client.disconnect()
-    if TESTING:
-        subprocess.Popen(["echo", "The vmc would normally restart now"])
-    else:
-        subprocess.Popen(["sleep", "8", ";sudo", "reboot"])
+
+
+def restart_vmc() -> None:
+    stop()
+    time.sleep(5)
+    subprocess.Popen(["sudo", "reboot"])
 
 
 if __name__ == '__main__':
@@ -52,3 +57,5 @@ if __name__ == '__main__':
 
     mqtt_client.connect()
     status.send_update()
+
+
