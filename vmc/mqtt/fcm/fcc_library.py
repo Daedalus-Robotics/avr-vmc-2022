@@ -22,6 +22,7 @@ from bell.avr.mqtt.payloads import (
 )
 from bell.avr.utils.decorators import async_try_except, try_except
 from bell.avr.utils.timing import rate_limit
+from deprecated.classic import deprecated
 from loguru import logger
 from mavsdk.action import ActionError
 from mavsdk.offboard import VelocityBodyYawspeed, VelocityNedYaw
@@ -33,7 +34,7 @@ from vmc.mqtt_client import MQTTClient
 
 class FCMMQTTModule:
     def __init__(self) -> None:
-        self.client = MQTTClient.get()
+        self.client: MQTTClient | None = None
 
     @try_except()
     def _publish_event(self, name: str, payload: str = "") -> None:
@@ -57,6 +58,9 @@ class DispatcherBusy(Exception):
 class DispatcherManager(FCMMQTTModule):
     def __init__(self) -> None:
         super().__init__()
+
+        self.client = MQTTClient.get()
+
         self.currently_running_task = None
         self.timeout = 10
 
@@ -87,12 +91,14 @@ class DispatcherManager(FCMMQTTModule):
         """
         Execute a task with a timeout.
         """
+        # noinspection PyBroadException
         try:
             await asyncio.wait_for(task(**payload), timeout = self.timeout)
             self._publish_event(f"request_{name}_completed_event")
             self.currently_running_task = None
 
         except asyncio.TimeoutError:
+            # noinspection PyBroadException
             try:
                 logger.warning(f"Task '{name}' timed out!")
                 self._publish_event("action_timeout_event", name)
@@ -104,10 +110,23 @@ class DispatcherManager(FCMMQTTModule):
         except Exception:
             logger.exception("ERROR IN TASK WAITER")
 
+    @try_except()
+    def _publish_event(self, name: str, payload: str = "") -> None:
+        """
+        Create and publish state machine event.
+        """
+        event = AvrFcmEventsPayload(
+                name = name,
+                payload = payload,
+        )
+        self.client.send_message("avr/fcm/events", event)
+
 
 class FlightControlComputer(FCMMQTTModule):
-    def __init__(self) -> None:
+    def __init__(self, ) -> None:
         super().__init__()
+
+        self.client = MQTTClient.get()
 
         # mavlink stuff
         self.drone = mavsdk.System(sysid = 141)
@@ -127,7 +146,8 @@ class FlightControlComputer(FCMMQTTModule):
         self.fcc_mode = "UNKNOWN"
         self.heading = 0.0
 
-    async def connect(self) -> None:
+    @deprecated
+    async def _connect(self) -> None:
         """
         Connect the Drone object.
         """
@@ -142,11 +162,12 @@ class FlightControlComputer(FCMMQTTModule):
 
         logger.success("Connected to the FCC")
 
+    # noinspection PyMethodMayBeStatic
     async def async_queue_action(
             self, queue_: queue.Queue, action: Callable, frequency: int = 10
     ) -> None:
         """
-        Creates a while loop that continously tries to pull a dict from a queue
+        Creates a while loop that continuously tries to pull a dict from a queue
         and do something with it at a set frequency.
 
         The given function needs to accept a single argument of the protobuf object
@@ -161,6 +182,7 @@ class FlightControlComputer(FCMMQTTModule):
         # as possible to prevent the queue from filling
 
         while True:
+            # noinspection PyBroadException
             try:
                 # get the next item from the queue
                 data = queue_.get_nowait()
@@ -179,14 +201,14 @@ class FlightControlComputer(FCMMQTTModule):
             except Exception:
                 logger.exception("Unexpected error in async_queue_action")
 
-    async def run_non_blocking(self) -> asyncio.Future:
+    async def run(self) -> asyncio.Future:
         """
         Run the Flight Control Computer module
         """
         # start our MQTT client
 
         # connect to the fcc
-        await self.connect()
+        # await self.connect()
 
         # start the mission api MQTT client
         # self.mission_api.run_non_blocking()
@@ -246,7 +268,6 @@ class FlightControlComputer(FCMMQTTModule):
                     self._publish_event("fcc_connected_event")
                 else:
                     self._publish_event("fcc_disconnected_event")
-                should_update = False
 
             was_connected = connected
 
@@ -282,7 +303,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.debug("is_armed loop started")
         async for armed in self.drone.telemetry.armed():
 
-            # if the arming status is different than last time
+            # if the arming status is different from last time
             if armed != was_armed:
                 if armed:
                     self._publish_event("fcc_armed_event")
@@ -327,6 +348,7 @@ class FlightControlComputer(FCMMQTTModule):
         """
         Runs the flight_mode telemetry loop
         """
+        # noinspection SpellCheckingInspection
         fcc_mode_map = {
             "UNKNOWN": "fcc_unknown_mode_event",
             "READY": "fcc_ready_mode_event",
@@ -483,7 +505,7 @@ class FlightControlComputer(FCMMQTTModule):
 
         action_map = {
             "break": self.set_intentional_timeout,
-            "connect": self.connect,
+            # "connect": self.connect,
             "arm": self.set_arm,
             "disarm": self.set_disarm,
             "kill": self.set_kill,
@@ -502,6 +524,7 @@ class FlightControlComputer(FCMMQTTModule):
 
         while True:
             action = {}
+            # noinspection PyBroadException
             try:
                 action = self.action_queue.get_nowait()
 
@@ -533,7 +556,7 @@ class FlightControlComputer(FCMMQTTModule):
     ) -> None:
         """
         Executes a given async action function, and publishes a success or failed
-        state machine event given whether or not an `ActionError` was raised.
+        state machine event given whether an `ActionError` was raised.
         """
         try:
             await action_fn()
@@ -546,8 +569,9 @@ class FlightControlComputer(FCMMQTTModule):
             logger.info(f"Sending {full_fail_str}")
             self._publish_event(full_fail_str)
 
+            # noinspection PyProtectedMember
             if e._result.result_str == "CONNECTION_ERROR":
-                asyncio.create_task(self.connect())
+                asyncio.create_task(self._connect())
 
             raise e from e
 
@@ -555,14 +579,16 @@ class FlightControlComputer(FCMMQTTModule):
 
     # region #####################  A C T I O N S #############################
 
+    # noinspection PyUnusedLocal
     @async_try_except()
     async def set_intentional_timeout(self, **kwargs) -> None:
         """
-        Sets a 20 second timeout.
+        Sets a 20-second timeout.
         """
         with contextlib.suppress(asyncio.CancelledError):
             await asyncio.sleep(20)
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def set_arm(self, **kwargs) -> None:
         """
@@ -571,6 +597,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.info("Sending arm command")
         await self.simple_action_executor(self.drone.action.arm, "arm")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def set_disarm(self, **kwargs) -> None:
         """
@@ -579,6 +606,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.info("Sending disarm command")
         await self.simple_action_executor(self.drone.action.disarm, "disarm")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def set_kill(self, **kwargs) -> None:
         """
@@ -588,6 +616,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.warning("Sending kill command")
         await self.simple_action_executor(self.drone.action.kill, "kill")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def set_land(self, **kwargs) -> None:
         """
@@ -596,6 +625,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.info("Sending land command")
         await self.simple_action_executor(self.drone.action.land, "land_cmd")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def set_reboot(self, **kwargs) -> None:
         """
@@ -604,10 +634,11 @@ class FlightControlComputer(FCMMQTTModule):
         logger.warning("Sending reboot command")
         await self.simple_action_executor(self.drone.action.reboot, "reboot")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def set_takeoff(self, takeoff_alt: float, **kwargs) -> None:
         """
-        Commands the drone to takeoff to the given altitude.
+        Commands the drone to take off to the given altitude.
         Will arm the drone if it is not already.
         """
         logger.info(f"Setting takeoff altitude to {takeoff_alt}")
@@ -616,6 +647,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.info("Sending takeoff command")
         await self.simple_action_executor(self.drone.action.takeoff, "takeoff")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def upload_mission(self, waypoints: List[dict], **kwargs) -> None:
         """
@@ -624,6 +656,7 @@ class FlightControlComputer(FCMMQTTModule):
         logger.info("Starting mission upload process")
         await self.mission_api.build_and_upload(waypoints)
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def begin_mission(self, **kwargs) -> None:
         """
@@ -638,18 +671,20 @@ class FlightControlComputer(FCMMQTTModule):
         if self.in_air:
             self._publish_event("mission_starting_from_air_event")
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def pause_mission(self, **kwargs) -> None:
         """
-        Calls the mission api to pasue a mission to the fcc.
+        Calls the mission api to pause a mission to the fcc.
         """
         logger.info("Starting mission upload process")
         await self.mission_api.pause()
 
+    # noinspection PyUnusedLocal
     @async_try_except(reraise = True)
     async def resume_mission(self, **kwargs) -> None:
         """
-        Calls the mission api to pasue a mission to the fcc.
+        Calls the mission api to resume a mission to the fcc.
         """
         logger.info("Resuming Mission")
         await self.mission_api.resume()
@@ -664,6 +699,7 @@ class FlightControlComputer(FCMMQTTModule):
         """
         return asyncio.gather(self.offboard_ned(), self.offboard_body())
 
+    # noinspection PyUnusedLocal
     async def offboard_start(self, **kwargs) -> None:
         """
         Starts offboard mode on the drone. Use with caution!
@@ -672,6 +708,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.drone.offboard.start()
         self.offboard_enabled = True
 
+    # noinspection PyUnusedLocal
     async def offboard_stop(self, **kwargs) -> None:
         """
         Stops offboard mode on the drone.
@@ -722,6 +759,7 @@ class FlightControlComputer(FCMMQTTModule):
             right = msg["right"]
             down = msg["down"]
             yaw = msg["yaw"]
+            # noinspection PyTypeChecker
             await self.drone.offboard.set_velocity_ned(
                     VelocityBodyYawspeed(forward, right, down, yaw)
             )
@@ -737,38 +775,36 @@ class FlightControlComputer(FCMMQTTModule):
 
 class PyMAVLinkAgent:
     def __init__(self) -> None:
-        self.client = MQTTClient.get()
+        self.mavlink_connection: mavutil.mavudp | None = None
 
-        self.topic_map = {
-            "avr/fusion/hil_gps": self.hilgps_msg_handler,
-        }
-        self.client.register_topic_map(self.topic_map)
+        self.client = MQTTClient.get()
+        self.client.register_callback("avr/fusion/hil_gps", self.hilgps_msg_handler)
 
         self.num_frames = 0
 
     @try_except()
-    def run_non_blocking(self) -> None:
+    async def run(self) -> None:
         """
         Set up a mavlink connection and kick off any tasks
         """
 
         # this NEEDS to be using UDP, TCP proved extremely unreliable
-        self.mavcon = mavutil.mavlink_connection(
-                "udpin:0.0.0.0:14542", source_system = 142, dialect = "bell"
+        self.mavlink_connection = mavutil.mavlink_connection(
+                "udpin:0.0.0.0:14542",
+                source_system = 142,
+                dialect = "bell"
         )
 
         logger.debug("Waiting for Mavlink heartbeat")
-        self.mavcon.wait_heartbeat()
+        self.mavlink_connection.wait_heartbeat()
         logger.success("Mavlink heartbeat received")
-
-        # super().run_non_blocking()
 
     @try_except(reraise = True)
     def hilgps_msg_handler(self, payload: AvrFusionHilGpsPayload) -> None:
         """
         Handle a HIL_GPS message.
         """
-        msg = self.mavcon.mav.hil_gps_heading_encode(  # type: ignore
+        msg = self.mavlink_connection.mav.hil_gps_heading_encode(  # type: ignore
                 payload["time_usec"],
                 payload["fix_type"],
                 payload["lat"],
@@ -785,7 +821,7 @@ class PyMAVLinkAgent:
                 payload["heading"],
         )
         # logger.debug(msg)
-        self.mavcon.mav.send(msg)  # type: ignore
+        self.mavlink_connection.mav.send(msg)  # type: ignore
         self.num_frames += 1
 
         # publish stats every second
