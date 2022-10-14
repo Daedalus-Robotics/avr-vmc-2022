@@ -46,7 +46,7 @@ class FrameServer:
 
         self.client = MQTTClient.get()
 
-        default_frame = stream.encode_frame(np.zeros((1, 1, 3), np.uint8))
+        success, default_frame = stream.encode_frame(np.zeros((1, 1, 3), np.uint8))
         self.cameras[CameraType.CSI] = default_frame
         self.cameras[CameraType.ZED_RIGHT] = default_frame
         self.cameras[CameraType.ZED_LEFT] = default_frame
