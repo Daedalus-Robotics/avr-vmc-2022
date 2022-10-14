@@ -25,7 +25,7 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
-from mqttmodule import MQTTModule
+from vmc.mqtt.mqttmodule import MQTTModule
 
 
 class FusionModule(MQTTModule):
