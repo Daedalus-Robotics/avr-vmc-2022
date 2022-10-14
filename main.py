@@ -1,15 +1,14 @@
+import asyncio
 import atexit
 import subprocess
 import time
 from threading import Thread
 
+import mavsdk
 from adafruit_platformdetect import Detector
 from systemctl import Service
 
-# from vmc.frame_server import FrameServer
-from vmc.mqtt.fcm.fcm import FlightControlModule
-from vmc.mqtt.fusion import FusionModule
-from vmc.mqtt.vio.vio import VIOModule
+from vmc.frame_server import FrameServer
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
@@ -18,10 +17,21 @@ from vmc.thermal import ThermalCamera
 detector = Detector()
 TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
 
+if not TESTING:
+    from vmc.mqtt.fcm.fcm import FlightControlModule
+    from vmc.mqtt.fusion import FusionModule
+    from vmc.mqtt.vio.vio import VIOModule
+
 mqtt_client = MQTTClient.get("localhost", 1883, True)
 status = Status()
 
 pcc: PeripheralControlComputer
+thermal: ThermalCamera
+frame_server: FrameServer
+if not TESTING:
+    vio: VIOModule
+    fcm: FlightControlModule
+    fusion: FusionModule
 mavp2p: Service
 
 
@@ -44,8 +54,8 @@ def restart_vmc() -> None:
     time.sleep(5)
     subprocess.Popen(["sudo", "reboot"])
 
-
-if __name__ == '__main__':
+async def main() -> None:
+    global mqtt_client, status, pcc, thermal, frame_server, vio, fcm, fusion, mavp2p
     pcc = PeripheralControlComputer()
     status.register_status("pcc", pcc.is_connected, pcc.reset)
     pcc.on_state = lambda state: status.update_status("pcc", state)
@@ -64,17 +74,26 @@ if __name__ == '__main__':
     thermal = ThermalCamera()
 
     # No purpose without the csi cam working or the zed cam streaming
-    # frame_server = FrameServer()
-    # frame_server.start()
+    frame_server = FrameServer()
+    frame_server.start()
 
-    vio = VIOModule()
-    Thread(target = vio.run, daemon = True).start()
+    if not TESTING:
+        vio = VIOModule()
+        Thread(target = vio.run, daemon = True).start()
 
-    fcm = FlightControlModule()
-    fcm.run()
+        fcm = FlightControlModule(status)
+        await fcm.run()
+        # s = mavsdk.System(sysid = 141)
+        # s.connect(system_address = "udp://0.0.0.0:14541")
 
-    fusion = FusionModule()
-    fusion.run()
+        fusion = FusionModule()
+        Thread(target = fusion.run).start()
 
     mqtt_client.connect()
     status.send_update()
+
+    await asyncio.Future()
+
+
+if __name__ == '__main__':
+    Thread(target = lambda: asyncio.run(main()), daemon = False).start()
