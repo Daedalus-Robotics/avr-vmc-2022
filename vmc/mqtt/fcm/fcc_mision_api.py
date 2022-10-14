@@ -12,25 +12,9 @@ from pymavlink import mavutil
 from vmc.mqtt_client import MQTTClient
 
 
-class FCMMQTTModule:
-    def __init__(self) -> None:
-        self.client = MQTTClient.get()
-
-    @try_except()
-    def _publish_event(self, name: str, payload: str = "") -> None:
-        """
-        Create and publish state machine event.
-        """
-        event = AvrFcmEventsPayload(
-                name = name,
-                payload = payload,
-        )
-        self.client.send_message("avr/fcm/events", event)
-
-
-class MissionAPI(FCMMQTTModule):
+class MissionAPI:
     def __init__(self, drone: mavsdk.System) -> None:
-        super().__init__()
+        self.client = MQTTClient.get()
         self.drone = drone
 
     @async_try_except(reraise = True)
@@ -104,7 +88,7 @@ class MissionAPI(FCMMQTTModule):
                 # https://mavlink.io/en/messages/common.html#MAV_CMD_NAV_WAYPOINT
                 command = mavutil.mavlink.MAV_CMD_NAV_WAYPOINT
                 param1 = 0  # hold time
-                param2 = 0  # accepteance radius
+                param2 = 0  # acceptance radius
                 param3 = 0  # pass radius, 0 goes straight through
                 param4 = float("nan")  # yaw angle. NaN uses current yaw heading mode
 
@@ -187,7 +171,7 @@ class MissionAPI(FCMMQTTModule):
         """
         Async blocking function that waits for the current mission to be finished.
         """
-        # self.drone.mission.is_missiion_finished unfortunately does not work,
+        # self.drone.mission.is_mission_finished unfortunately does not work,
         # with the mission_raw.MissionItems we've uploaded
 
         # if called immediately after a mission has been started, will immediately
@@ -234,3 +218,14 @@ class MissionAPI(FCMMQTTModule):
         """
         logger.info("Sending resume mission command")
         await self.start()
+
+    @try_except()
+    def _publish_event(self, name: str, payload: str = "") -> None:
+        """
+        Create and publish state machine event.
+        """
+        event = AvrFcmEventsPayload(
+                name = name,
+                payload = payload,
+        )
+        self.client.send_message("avr/fcm/events", event)
