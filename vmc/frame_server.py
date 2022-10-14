@@ -39,6 +39,7 @@ class FrameServer:
 
         self.cameras = {}
         self.current_camera = CameraType.CSI
+        self.is_auto = False
         self.server_socket = None
         self.server_thread = None
         self.is_running = False
@@ -52,6 +53,8 @@ class FrameServer:
         self.cameras[CameraType.ZED_DEPTH] = default_frame
 
         self.client.register_callback("avr/camera/restart", self.restart)
+        self.client.register_callback("avr/camera/auto", self._set_auto)
+        self.client.register_callback("avr/camera/select", self._set_camera)
 
     def update_frame(self,
                      frame: np.ndarray,
@@ -74,8 +77,20 @@ class FrameServer:
             return False
         return success
 
-    def set_camera(self, camera_type: CameraType) -> None:
-        self.current_camera = camera_type
+    def _set_auto(self, state: bool | dict):
+        if isinstance(state, bool):
+            self.is_auto = state
+        else:
+            self.is_auto = state.get("enabled", False)
+
+    def _set_camera(self, payload: dict):
+        index: int = payload.get("index", 0)
+        if index in self.cameras:
+            self.set_camera(index)
+
+    def set_camera(self, camera_type: CameraType | int, force: bool = False) -> None:
+        if force or self.is_auto:
+            self.current_camera = camera_type
 
     def start(self) -> None:
         self.is_running = True
