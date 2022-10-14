@@ -208,7 +208,7 @@ class FlightControlComputer(FCMMQTTModule):
         # start our MQTT client
 
         # connect to the fcc
-        # await self.connect()
+        await self._connect()
 
         # start the mission api MQTT client
         # self.mission_api.run_non_blocking()
