@@ -94,7 +94,7 @@ class ThermalCamera:
             if counter == 0:
                 self._stream()
             counter = (counter + 1) % 3
-            time.sleep(1 / 30)
+            time.sleep(1 / 60)
 
     def _stream(self) -> None:
         if self.client.is_connected:
