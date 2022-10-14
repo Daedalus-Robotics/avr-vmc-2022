@@ -57,7 +57,8 @@ class ZEDCamera(object):
         err = self.zed.open(init_params)
 
         if err != sl.ERROR_CODE.SUCCESS:
-            logger.debug("Zed Camera Loadng (FAILED!!!)")
+            logger.debug("Zed Camera Loading (FAILED!!!)")
+            logger.debug(f"Zed Camera Error Code: {err}")
             exit(1)
         logger.success("Zed Camera Loaded")
 
