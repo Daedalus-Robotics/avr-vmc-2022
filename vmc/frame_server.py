@@ -46,7 +46,7 @@ class FrameServer:
 
         self.client = MQTTClient.get()
 
-        success, default_frame = stream.encode_frame(np.zeros((1, 1, 3), np.uint8))
+        success, default_frame = stream.encode_frame(cv2.imread("./vmc/resources/no_camera.jpg"))
         self.cameras[CameraType.CSI] = default_frame
         self.cameras[CameraType.ZED_RIGHT] = default_frame
         self.cameras[CameraType.ZED_LEFT] = default_frame
@@ -132,8 +132,6 @@ class FrameServer:
                 try:
                     frame = self._get_frame()
                     message_count = math.ceil(len(frame) / MAX_MESSAGE_SIZE)
-                    print(len(frame))
-                    print(message_count)
                     self.server_socket.sendto(message_count.to_bytes(5, 'big'), client_addr)
                     if message_count == 1:
                         self.server_socket.sendto(frame, client_addr)

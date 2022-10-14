@@ -6,20 +6,25 @@ import cv2
 from vmc import frame_server
 from vmc.mqtt_client import MQTTClient
 
-cap = cv2.VideoCapture(4)
+cap = cv2.VideoCapture("~/test_camera.gif")
 client = MQTTClient.get()
 client.connect()
 
 s: frame_server.FrameServer
 
 
-def run():
+def run() -> None:
+    global cap
     while True:
         try:
             success, frame = cap.read()
+            if frame is None:
+                cap.release()
+                cap = cv2.VideoCapture("~/test_camera.gif")
+                success, frame = cap.read()
             if success:
                 s.update_frame(frame, frame_server.CameraType.CSI, 90, 720)
-            time.sleep(1/120)
+            time.sleep(1 / 30)
         finally:
             pass
 
