@@ -2,7 +2,6 @@ import math
 from typing import Tuple
 
 import numpy as np
-from bell.avr.mqtt.client import MQTTModule
 from bell.avr.mqtt.payloads import (
     AvrVioConfidencePayload,
     AvrVioHeadingPayload,
@@ -14,6 +13,7 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
+from vmc.mqtt.mqttmodule import MQTTModule
 from vmc.mqtt.vio.vio_library import CameraCoordinateTransformation
 from vmc.mqtt.vio.zed_library import ZEDCamera
 
@@ -61,6 +61,7 @@ class VIOModule(MQTTModule):
         d = float(ned_pos[2])
         ned_update = AvrVioPositionNedPayload(n = n, e = e, d = d)  # cm
 
+        # noinspection PyTypeChecker
         self.send_message("avr/vio/position/ned", ned_update)
 
         if np.isnan(rpy).any():
@@ -68,6 +69,7 @@ class VIOModule(MQTTModule):
 
         # send orientation update
         eul_update = AvrVioOrientationEulPayload(psi = rpy[0], theta = rpy[1], phi = rpy[2])
+        # noinspection PyTypeChecker
         self.send_message("avr/vio/orientation/eul", eul_update)
 
         # send heading update
@@ -77,6 +79,7 @@ class VIOModule(MQTTModule):
             heading += 2 * math.pi
         heading = np.rad2deg(heading)
         heading_update = AvrVioHeadingPayload(degrees = heading)
+        # noinspection PyTypeChecker
         self.send_message("avr/vio/heading", heading_update)
         # coord_trans.heading = rpy[2]
 
@@ -85,11 +88,13 @@ class VIOModule(MQTTModule):
 
         # send velocity update
         vel_update = AvrVioVelocityNedPayload(n = ned_vel[0], e = ned_vel[1], d = ned_vel[2])
+        # noinspection PyTypeChecker
         self.send_message("avr/vio/velocity/ned", vel_update)
 
         confidence_update = AvrVioConfidencePayload(
                 tracker = tracker_confidence,
         )
+        # noinspection PyTypeChecker
         self.send_message("avr/vio/confidence", confidence_update)
 
     @run_forever(frequency = 10)
@@ -118,7 +123,7 @@ class VIOModule(MQTTModule):
     def run(self) -> None:
         self.run_non_blocking()
 
-        # setup the tracking camera
+        # set up the tracking camera
         logger.debug("Setting up camera connection")
         self.camera.setup()
 
