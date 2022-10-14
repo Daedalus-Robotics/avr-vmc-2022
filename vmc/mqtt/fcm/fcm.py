@@ -1,14 +1,15 @@
 import asyncio
 
 from vmc.mqtt.fcm.fcc_library import FlightControlComputer, PyMAVLinkAgent
+from vmc.status import Status
 
 
 class FlightControlModule:
-    def __init__(self) -> None:
+    def __init__(self, status: Status) -> None:
         super().__init__()
 
         # create the FCC objects
-        self.fcc = FlightControlComputer()
+        self.fcc = FlightControlComputer(status)
         self.gps_fcc = PyMAVLinkAgent()
 
     async def run(self) -> None:

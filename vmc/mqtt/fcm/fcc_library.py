@@ -30,6 +30,7 @@ from pymavlink import mavutil
 
 from vmc.mqtt.fcm.fcc_mision_api import MissionAPI
 from vmc.mqtt_client import MQTTClient
+from vmc.status import Status
 
 
 class FCMMQTTModule:
@@ -123,7 +124,7 @@ class DispatcherManager(FCMMQTTModule):
 
 
 class FlightControlComputer(FCMMQTTModule):
-    def __init__(self, ) -> None:
+    def __init__(self, status: Status) -> None:
         super().__init__()
 
         self.client = MQTTClient.get()
@@ -131,6 +132,9 @@ class FlightControlComputer(FCMMQTTModule):
         # mavlink stuff
         self.drone = mavsdk.System(sysid = 141)
         self.mission_api = MissionAPI(self.drone)
+
+        self.status = status
+        self.status.register_status("fcc", False, lambda: asyncio.run(self.drone.action.reboot()))
 
         # queues
         self.action_queue = queue.Queue()
@@ -264,6 +268,7 @@ class FlightControlComputer(FCMMQTTModule):
 
             # if the state has been steady for debounce_time
             if (now - flip_time > debounce_time) and should_update:
+                self.status.update_status("fcc", connected)
                 if connected:
                     self._publish_event("fcc_connected_event")
                 else:
