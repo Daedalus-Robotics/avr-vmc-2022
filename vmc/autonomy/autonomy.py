@@ -1,0 +1,2 @@
+class Autonomy:
+    pass
