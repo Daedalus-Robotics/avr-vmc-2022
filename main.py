@@ -4,7 +4,6 @@ import subprocess
 import time
 from threading import Thread
 
-import mavsdk
 from adafruit_platformdetect import Detector
 from pymavlink import mavutil
 from systemctl import Service
@@ -35,7 +34,6 @@ if not TESTING:
     fusion: FusionModule
 mavp2p: Service
 
-
 test_thing = None
 
 
@@ -60,13 +58,15 @@ def stop() -> None:
 
 def restart_vmc() -> None:
     stop()
-    time.sleep(5)
+    time.sleep(2)
     subprocess.Popen(["sudo", "reboot"])
+
 
 def shutdown_vmc() -> None:
     stop()
-    time.sleep(5)
+    time.sleep(2)
     subprocess.Popen(["sudo", "shutdown", "now"])
+
 
 def test_rc_channels(print_stuff = True) -> None:
     global test_thing
@@ -86,7 +86,7 @@ def test_rc_channels(print_stuff = True) -> None:
 
 async def main() -> None:
     global mqtt_client, status, pcc, thermal, frame_server, vio, fcm, fusion, mavp2p
-    mqtt_client.register_callback("avr/shutdown", stop, is_json = False, use_args = False)
+    mqtt_client.register_callback("avr/shutdown", shutdown_vmc, is_json = False, use_args = False)
 
     pcc = PeripheralControlComputer()
     status.register_status("pcc", pcc.is_connected, pcc.reset)
