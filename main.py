@@ -6,6 +6,7 @@ from threading import Thread
 
 import mavsdk
 from adafruit_platformdetect import Detector
+from pymavlink import mavutil
 from systemctl import Service
 
 from vmc.frame_server import FrameServer
@@ -35,15 +36,23 @@ if not TESTING:
 mavp2p: Service
 
 
+test_thing = None
+
+
 @atexit.register
 def stop() -> None:
     pcc.color_wipe(60)
     pcc.end()
-    status.register_status("pcc", False)
+    status.update_status("pcc", False)
 
     if not TESTING:
         mavp2p.stop()
-    status.register_status("mavp2p", False)
+    status.update_status("mavp2p", False)
+
+    if not TESTING:
+        fcm.gps_fcc.shutdown()
+        fcm.gps_fcc.mavlink_connection.close()
+        status.update_status("fcc", False)
 
     status.update_status("vmc", False)
     mqtt_client.disconnect()
@@ -54,8 +63,31 @@ def restart_vmc() -> None:
     time.sleep(5)
     subprocess.Popen(["sudo", "reboot"])
 
+def shutdown_vmc() -> None:
+    stop()
+    time.sleep(5)
+    subprocess.Popen(["sudo", "shutdown", "now"])
+
+def test_rc_channels(print_stuff = True) -> None:
+    global test_thing
+    connection: mavutil.mavudp = fcm.gps_fcc.mavlink_connection
+
+    first = True
+    while True:
+        v = connection.recv_match(type = "RC_CHANNELS", blocking = True)
+        if print_stuff:
+            if first:
+                print(type(v))
+            first = False
+            print(v)
+        test_thing = v
+        time.sleep(0.1)
+
+
 async def main() -> None:
     global mqtt_client, status, pcc, thermal, frame_server, vio, fcm, fusion, mavp2p
+    mqtt_client.register_callback("avr/shutdown", stop, is_json = False, use_args = False)
+
     pcc = PeripheralControlComputer()
     status.register_status("pcc", pcc.is_connected, pcc.reset)
     pcc.on_state = lambda state: status.update_status("pcc", state)
@@ -81,7 +113,8 @@ async def main() -> None:
         vio = VIOModule()
         Thread(target = vio.run, daemon = True).start()
 
-        fcm = FlightControlModule(status)
+        fcm = FlightControlModule(None, None, status)
+        status.register_status("fcc", False, fcm.gps_fcc.reboot)
         await fcm.run()
         # s = mavsdk.System(sysid = 141)
         # s.connect(system_address = "udp://0.0.0.0:14541")
