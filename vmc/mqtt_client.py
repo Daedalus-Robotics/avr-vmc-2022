@@ -69,15 +69,31 @@ class MQTTClient:
             self.connect()
             time.sleep(2)
 
+    # def _on_message(self, _: mqtt.Client, __: Any, msg: mqtt.MQTTMessage):
+    #     if msg.topic in self.topic_map:
+    #         try:
+    #             topic_tuple = self.topic_map[msg.topic]
+    #             callback, is_json, _, _, _, use_args = topic_tuple
+    #             payload: dict | bytes = msg.payload
+    #             if is_json:
+    #                 payload = json.loads(msg.payload)
+    #             if use_args:
+    #                 callback(payload)
+    #             else:
+    #                 callback()
+    #         except (AttributeError, TypeError, json.JSONDecodeError) as e:
+    #             logger.warning(f"Filed to run callback for topic {msg.topic}")
+    #             logger.warning(e)
+
     def _on_message(self, _: mqtt.Client, __: Any, msg: mqtt.MQTTMessage):
         if msg.topic in self.topic_map:
             try:
                 topic_tuple = self.topic_map[msg.topic]
                 callback, is_json, _, _, _, use_args = topic_tuple
-                payload: dict | bytes = msg.payload
-                if is_json:
-                    payload = json.loads(msg.payload)
                 if use_args:
+                    payload: dict | bytes = msg.payload
+                    if is_json:
+                        payload = json.loads(msg.payload)
                     callback(payload)
                 else:
                     callback()
