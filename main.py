@@ -4,6 +4,7 @@ import subprocess
 import time
 from threading import Thread
 
+import mavsdk
 from adafruit_platformdetect import Detector
 from pymavlink import mavutil
 from systemctl import Service
@@ -33,6 +34,8 @@ if not TESTING:
     fcm: FlightControlModule
     fusion: FusionModule
 mavp2p: Service
+mavlink_system: mavsdk.System
+pymavlink_connection: mavutil.mavudp
 
 test_thing = None
 
@@ -81,11 +84,14 @@ def test_rc_channels(print_stuff = True) -> None:
             first = False
             print(v)
         test_thing = v
+        print(v.chan8_raw >= 1060)
         time.sleep(0.1)
 
-
 async def main() -> None:
-    global mqtt_client, status, pcc, thermal, frame_server, vio, fcm, fusion, mavp2p
+    global mqtt_client, status
+    global pcc, thermal, frame_server, vio, fcm, fusion
+    global mavp2p
+    global mavlink_system, pymavlink_connection
     mqtt_client.register_callback("avr/shutdown", shutdown_vmc, is_json = False, use_args = False)
 
     pcc = PeripheralControlComputer()
@@ -113,7 +119,13 @@ async def main() -> None:
         vio = VIOModule()
         Thread(target = vio.run, daemon = True).start()
 
-        fcm = FlightControlModule(None, None, status)
+        mavlink_system = mavsdk.System(sysid = 141)
+        pymavlink_connection = mavutil.mavlink_connection(
+                "udpin:0.0.0.0:14542",
+                source_system = 142,
+                dialect = "bell"
+        )
+        fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
         status.register_status("fcc", False, fcm.gps_fcc.reboot)
         await fcm.run()
         # s = mavsdk.System(sysid = 141)

@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable, List
 
 import mavsdk
+import pymavlink.mavutil
 from bell.avr.mqtt.payloads import (
     AvrFcmAttitudeEulerPayload,
     AvrFcmBatteryPayload,
@@ -124,17 +125,16 @@ class DispatcherManager(FCMMQTTModule):
 
 
 class FlightControlComputer(FCMMQTTModule):
-    def __init__(self, status: Status) -> None:
+    def __init__(self, system: mavsdk.System, status: Status) -> None:
         super().__init__()
 
         self.client = MQTTClient.get()
 
         # mavlink stuff
-        self.drone = mavsdk.System(sysid = 141)
+        self.drone = system
         self.mission_api = MissionAPI(self.drone)
 
         self.status = status
-        self.status.register_status("fcc", False, lambda: asyncio.run(self.drone.action.reboot()))
 
         # queues
         self.action_queue = queue.Queue()
@@ -779,8 +779,8 @@ class FlightControlComputer(FCMMQTTModule):
 
 
 class PyMAVLinkAgent:
-    def __init__(self) -> None:
-        self.mavlink_connection: mavutil.mavudp | None = None
+    def __init__(self, connection: mavutil.mavudp) -> None:
+        self.mavlink_connection: mavutil.mavudp = connection
 
         self.client = MQTTClient.get()
         self.client.register_callback("avr/fusion/hil_gps", self.hilgps_msg_handler)
@@ -794,15 +794,31 @@ class PyMAVLinkAgent:
         """
 
         # this NEEDS to be using UDP, TCP proved extremely unreliable
-        self.mavlink_connection = mavutil.mavlink_connection(
-                "udpin:0.0.0.0:14542",
-                source_system = 142,
-                dialect = "bell"
-        )
+        # self.mavlink_connection = mavutil.mavlink_connection(
+        #         "udpin:0.0.0.0:14542",
+        #         source_system = 142,
+        #         dialect = "bell"
+        # )
 
         logger.debug("Waiting for Mavlink heartbeat")
         self.mavlink_connection.wait_heartbeat()
         logger.success("Mavlink heartbeat received")
+
+    def reboot(self) -> None:
+        self.mavlink_connection.mav.command_long_send(
+                self.mavlink_connection.target_system,
+                self.mavlink_connection.target_component,
+                mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+                1, 1, 1, 0, 0, 0, 0, -1
+        )
+
+    def shutdown(self) -> None:
+        self.mavlink_connection.mav.command_long_send(
+                self.mavlink_connection.target_system,
+                self.mavlink_connection.target_component,
+                mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+                2, 2, 2, 0, 0, 0, 0, -1
+        )
 
     @try_except(reraise = True)
     def hilgps_msg_handler(self, payload: AvrFusionHilGpsPayload) -> None:

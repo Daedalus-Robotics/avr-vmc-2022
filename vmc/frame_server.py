@@ -3,6 +3,7 @@ import socket
 import time
 from enum import Enum
 from threading import Thread
+from typing import Callable
 
 import cv2
 import numpy as np
@@ -38,7 +39,8 @@ class FrameServer:
         self.timeout = timeout
 
         self.cameras = {}
-        self.current_camera = CameraType.CSI
+        self.camera_frame_functions: dict[int, Callable[[], np.ndarray]] = {}
+        self.current_camera: int = CameraType.CSI.value
         self.is_auto = False
         self.server_socket = None
         self.server_thread = None
@@ -47,10 +49,10 @@ class FrameServer:
         self.client = MQTTClient.get()
 
         success, default_frame = stream.encode_frame(cv2.imread("./vmc/resources/no_camera.jpg"))
-        self.cameras[CameraType.CSI] = default_frame
-        self.cameras[CameraType.ZED_RIGHT] = default_frame
-        self.cameras[CameraType.ZED_LEFT] = default_frame
-        self.cameras[CameraType.ZED_DEPTH] = default_frame
+        self.cameras[CameraType.CSI.value] = default_frame
+        self.cameras[CameraType.ZED_RIGHT.value] = default_frame
+        self.cameras[CameraType.ZED_LEFT.value] = default_frame
+        self.cameras[CameraType.ZED_DEPTH.value] = default_frame
 
         self.client.register_callback("avr/camera/restart", self.restart)
         self.client.register_callback("avr/camera/auto", self._set_auto)
@@ -58,10 +60,12 @@ class FrameServer:
 
     def update_frame(self,
                      frame: np.ndarray,
-                     camera_type: CameraType,
+                     camera_type: CameraType | int,
                      compression_level: int,
                      height: int = None
                      ) -> bool:
+        if not isinstance(camera_type, int):
+            camera_type = camera_type.value
         if height is None:
             height = frame.shape[0]
         # noinspection PyBroadException
@@ -90,6 +94,8 @@ class FrameServer:
 
     def set_camera(self, camera_type: CameraType | int, force: bool = False) -> None:
         if force or self.is_auto:
+            if not isinstance(camera_type, int):
+                camera_type = camera_type.value
             self.current_camera = camera_type
 
     def start(self) -> None:
@@ -107,6 +113,9 @@ class FrameServer:
         self.start()
 
     def _get_frame(self) -> bytes:
+        frame_func = self.camera_frame_functions.get(self.current_camera, None)
+        if frame_func is not None:
+            self.update_frame(frame_func(), self.current_camera, 90, 720)
         return self.cameras[self.current_camera]
 
     def _server_loop(self) -> None:
