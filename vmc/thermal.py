@@ -139,10 +139,12 @@ class Detector:
         self.kernel_size = kernel_size
 
         self.contours: List = []
+        self.currently_detecting = False
         self.largest_contour = None
         self.main_detection_image_shape = (1, 1, 3)
         self.main_detection_center = (0, 0)
         self.main_detection_radius = 0
+        self.previous_positions: List[tuple[int, int]] = []
 
     def update(self, hsv_frame: np.ndarray) -> None:
         mask = cv2.inRange(hsv_frame, self.lower_bound, self.upper_bound)
@@ -165,6 +167,10 @@ class Detector:
 
         moments = cv2.moments(self.largest_contour)
 
+        self.currently_detecting = True if (len(self.contours) > 0) and (moments['m00'] != 0.0) else False
+        if not self.currently_detecting:
+            self.previous_positions = []
+
         if moments['m00'] != 0.0:
             center_x = round(moments['m10'] / moments['m00'])
             center_y = round(moments['m01'] / moments['m00'])
@@ -175,6 +181,10 @@ class Detector:
                 center_x,
                 center_y
             )
+
+            if len(self.previous_positions) > 5:
+                self.previous_positions.pop(0)
+            self.previous_positions.append(self.main_detection_center)
 
             x_cord = center_x
             y_cord = center_y
@@ -190,49 +200,58 @@ class Detector:
     def overlay(self, frame: np.ndarray, show_contours: bool = False) -> np.ndarray:
         ov_frame = frame.copy()
 
-        x_size_mapper = self.main_detection_image_shape[0] // ov_frame.shape[0]
-        y_size_mapper = self.main_detection_image_shape[1] // ov_frame.shape[1]
+        position = self.stabilized_position
 
-        detection_center_x = int(
-                map(
-                        self.main_detection_center[0],
-                        0,
-                        self.main_detection_image_shape[0],
-                        0,
-                        ov_frame.shape[0]
-                )
-        )
-        detection_center_y = int(
-                map(
-                        self.main_detection_center[1],
-                        0,
-                        self.main_detection_image_shape[1],
-                        0,
-                        ov_frame.shape[1]
-                )
-        )
+        if self.currently_detecting:
+            detection_center_x = int(
+                    map(
+                            position[0],
+                            0,
+                            self.main_detection_image_shape[0],
+                            0,
+                            ov_frame.shape[0]
+                    )
+            )
+            detection_center_y = int(
+                    map(
+                            position[1],
+                            0,
+                            self.main_detection_image_shape[1],
+                            0,
+                            ov_frame.shape[1]
+                    )
+            )
+            radius = int(
+                    map(
+                            self.main_detection_radius,
+                            0,
+                            self.main_detection_image_shape[0],
+                            0,
+                            ov_frame.shape[0]
+                    )
+            )
 
-        cv2.line(
-                ov_frame,
-                (detection_center_x, 0),
-                (detection_center_x, ov_frame.shape[1]),
-                (255, 255, 255),
-                2
-        )
-        cv2.line(
-                ov_frame,
-                (0, detection_center_y),
-                (ov_frame.shape[0], detection_center_y),
-                (255, 255, 255),
-                2
-        )
-        cv2.circle(
-                ov_frame,
-                (detection_center_x, detection_center_y),
-                self.main_detection_radius,
-                (255, 225, 255),
-                3
-        )
+            cv2.line(
+                    ov_frame,
+                    (detection_center_x, 0),
+                    (detection_center_x, ov_frame.shape[1]),
+                    (255, 255, 255),
+                    2
+            )
+            cv2.line(
+                    ov_frame,
+                    (0, detection_center_y),
+                    (ov_frame.shape[0], detection_center_y),
+                    (255, 255, 255),
+                    2
+            )
+            cv2.circle(
+                    ov_frame,
+                    (detection_center_x, detection_center_y),
+                    radius,
+                    (255, 0, 255),
+                    3
+            )
         if show_contours:
             cv2.drawContours(
                     ov_frame,
@@ -243,6 +262,20 @@ class Detector:
             )
 
         return ov_frame
+
+    @property
+    def stabilized_position(self) -> tuple[int, int] | None:
+        if self.currently_detecting:
+            x_sum = 0
+            y_sum = 0
+            for position in self.previous_positions:
+                x_sum += position[0]
+                y_sum += position[1]
+            x_avg = x_sum // len(self.previous_positions)
+            y_avg = y_sum // len(self.previous_positions)
+            return x_avg, y_avg
+        else:
+            return None
 
 
 if __name__ == "__main__":
