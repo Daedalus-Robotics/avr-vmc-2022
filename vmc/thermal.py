@@ -120,8 +120,8 @@ class ThermalCamera:
             self.detector.update(self.get_frame(color = False))
             if counter == 0:
                 self._stream()
-            counter = (counter + 1) % 3
-            time.sleep((1 / 15) / 3)
+            counter = (counter + 1) % 2
+            time.sleep((1 / 30) / 2)
 
     def _stream(self) -> None:
         if self.client.is_connected:
