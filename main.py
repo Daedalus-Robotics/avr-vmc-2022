@@ -111,8 +111,8 @@ async def main() -> None:
     thermal = ThermalCamera()
 
     # No purpose without the csi cam working or the zed cam streaming
-    frame_server = FrameServer()
-    frame_server.start()
+    # frame_server = FrameServer()
+    # frame_server.start()
 
     if not TESTING:
         vio = VIOModule()
