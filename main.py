@@ -46,7 +46,7 @@ test_thing = None
 
 @atexit.register
 def stop() -> None:
-    pcc.color_wipe(60)
+    pcc.color_wipe(10)
     pcc.end()
     status.update_status("pcc", False)
 
@@ -56,7 +56,7 @@ def stop() -> None:
 
     if not TESTING:
         fcm.gps_fcc.shutdown()
-        fcm.gps_fcc.mavlink_connection.close()
+        pymavlink_connection.close()
         status.update_status("fcc", False)
 
     status.update_status("vmc", False)
@@ -69,10 +69,23 @@ def restart_vmc() -> None:
     subprocess.Popen(["sudo", "reboot"])
 
 
-def shutdown_vmc() -> None:
-    stop()
-    time.sleep(2)
-    subprocess.Popen(["sudo", "shutdown", "now"])
+async def shutdown_vmc() -> None:
+    if not TESTING:
+        stop()
+        time.sleep(1)
+        tune = mavsdk.system.tune.TuneDescription([
+            mavsdk.system.tune.SongElement.DURATION_1,
+            mavsdk.system.tune.SongElement.NOTE_C,
+            mavsdk.system.tune.SongElement.NOTE_B,
+            mavsdk.system.tune.SongElement.NOTE_A,
+            mavsdk.system.tune.SongElement.NOTE_PAUSE,
+            mavsdk.system.tune.SongElement.NOTE_PAUSE,
+            mavsdk.system.tune.SongElement.NOTE_D
+        ], 120)
+        await mavlink_system.tune.play_tune(tune)
+        time.sleep(1)
+        subprocess.Popen(["sudo", "shutdown", "now"])
+        await asyncio.Future()
 
 
 def test_rc_channels(print_stuff = True) -> None:
@@ -97,7 +110,7 @@ async def main() -> None:
     global pcc, thermal, frame_server, vio, fcm, fusion
     global mavp2p
     global mavlink_system, pymavlink_connection
-    mqtt_client.register_callback("avr/shutdown", shutdown_vmc, is_json = False, use_args = False)
+    mqtt_client.register_callback("avr/shutdown", lambda: asyncio.run(shutdown_vmc()), is_json = False, use_args = False)
 
     pcc = PeripheralControlComputer()
     status.register_status("pcc", pcc.is_connected, pcc.reset)
