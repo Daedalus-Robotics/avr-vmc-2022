@@ -87,6 +87,7 @@ def test_rc_channels(print_stuff = True) -> None:
         print(v.chan8_raw >= 1060)
         time.sleep(0.1)
 
+
 async def main() -> None:
     global mqtt_client, status
     global pcc, thermal, frame_server, vio, fcm, fusion
