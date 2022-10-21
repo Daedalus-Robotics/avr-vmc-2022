@@ -185,7 +185,7 @@ class Detector:
                     x_cord = point[0][0]
             use_x_cord = (x_cord - center_x) > (y_cord - center_y)
 
-            self.main_detection_radius = ((x_cord if use_x_cord else y_cord) // 2) + 2
+            self.main_detection_radius = (x_cord if use_x_cord else y_cord) // 2
 
     def overlay(self, frame: np.ndarray, show_contours: bool = False) -> np.ndarray:
         ov_frame = frame.copy()
