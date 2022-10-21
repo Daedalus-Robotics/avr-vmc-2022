@@ -13,6 +13,7 @@ from vmc.frame_server import FrameServer
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
+from vmc.status_led import StatusStrip
 from vmc.thermal import ThermalCamera
 
 if (len(sys.argv) > 1) and (sys.argv[1] == "test"):
@@ -31,7 +32,8 @@ main_thread: Thread | None = None
 status_thread: Thread | None = None
 
 mqtt_client = MQTTClient.get("localhost", 1883, True)
-status = Status()
+status_strip = StatusStrip(8)
+status = Status(status_strip)
 
 pcc: PeripheralControlComputer
 thermal: ThermalCamera
