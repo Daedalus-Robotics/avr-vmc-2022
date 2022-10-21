@@ -41,8 +41,6 @@ if not TESTING:
     mavlink_system: mavsdk.System
     pymavlink_connection: mavutil.mavudp
 
-test_thing = None
-
 
 @atexit.register
 def stop() -> None:
@@ -86,23 +84,6 @@ async def shutdown_vmc() -> None:
         time.sleep(1)
         subprocess.Popen(["sudo", "shutdown", "now"])
         await asyncio.Future()
-
-
-def test_rc_channels(print_stuff = True) -> None:
-    global test_thing
-    connection: mavutil.mavudp = fcm.gps_fcc.mavlink_connection
-
-    first = True
-    while True:
-        v = connection.recv_match(type = "RC_CHANNELS", blocking = True)
-        if print_stuff:
-            if first:
-                print(type(v))
-            first = False
-            print(v)
-        test_thing = v
-        print(v.chan8_raw >= 1060)
-        time.sleep(0.1)
 
 
 async def main() -> None:
