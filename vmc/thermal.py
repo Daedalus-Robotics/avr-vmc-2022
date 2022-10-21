@@ -25,18 +25,14 @@ if not TESTING:
 VIEW_SIZE = 30
 CAMERA_SIZE = 8
 TOTAL_CAMERA = CAMERA_SIZE * CAMERA_SIZE
-# SIZE = (240, 240)
+
 POINTS = [(math.floor(ix / CAMERA_SIZE), (ix % CAMERA_SIZE)) for ix in range(TOTAL_CAMERA)]
-# for points_row_num in range(8):
-#     for points_pixel_num in range(8):
-#         points_temp = randint(0, 80)
-#         POINTS[points_pixel_num, points_row_num] = points_temp
-# POINTS_MIN, POINTS_MAX = POINTS.min(0, initial = None), POINTS.max(0, initial = None)
-# GRID_X, GRID_Y = np.linspace(POINTS_MIN[0], POINTS_MAX[0], 240), np.linspace(POINTS_MIN[1], POINTS_MAX[1], 240)
 GRID_X, GRID_Y = np.mgrid[0: CAMERA_SIZE - 1: TOTAL_CAMERA / 2j, 0: CAMERA_SIZE - 1: TOTAL_CAMERA / 2j]
+
 COLORDEPTH = 1024
 COLORS = list(Color("indigo").range_to(Color("red"), COLORDEPTH))
 COLORS = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in COLORS]
+
 ENCODING_PARAMS = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
 
