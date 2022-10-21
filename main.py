@@ -140,6 +140,14 @@ async def main() -> None:
     await asyncio.Future()
 
 
+def ensure_running() -> None:
+    global main_thread
+    while True:
+        if (main_thread is None) or (not main_thread.is_alive()):
+            main_thread = Thread(target = lambda: asyncio.run(main()), daemon = False)
+            main_thread.start()
+
+
 if __name__ == '__main__':
     main_thread = Thread(target = lambda: asyncio.run(main()), daemon = False)
     status_thread = Thread(target = ensure_running, daemon = True)
