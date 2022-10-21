@@ -127,8 +127,6 @@ async def main() -> None:
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
         status.register_status("fcc", False, fcm.gps_fcc.reboot)
         await fcm.run()
-        # s = mavsdk.System(sysid = 141)
-        # s.connect(system_address = "udp://0.0.0.0:14541")
 
         fusion = FusionModule()
         Thread(target = fusion.run).start()
