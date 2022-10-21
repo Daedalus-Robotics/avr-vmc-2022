@@ -6,7 +6,6 @@ from threading import Thread
 
 import mavsdk
 from adafruit_platformdetect import Detector
-from pymavlink import mavutil
 from systemctl import Service
 
 from vmc.frame_server import FrameServer
@@ -19,6 +18,7 @@ detector = Detector()
 TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
 
 if not TESTING:
+    from pymavlink import mavutil
     from vmc.mqtt.fcm.fcm import FlightControlModule
     from vmc.mqtt.fusion import FusionModule
     from vmc.mqtt.vio.vio import VIOModule
@@ -33,9 +33,9 @@ if not TESTING:
     vio: VIOModule
     fcm: FlightControlModule
     fusion: FusionModule
-mavp2p: Service
-mavlink_system: mavsdk.System
-pymavlink_connection: mavutil.mavudp
+    mavp2p: Service
+    mavlink_system: mavsdk.System
+    pymavlink_connection: mavutil.mavudp
 
 test_thing = None
 
