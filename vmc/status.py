@@ -37,4 +37,4 @@ class Status:
             self.send_update()
 
     def send_update(self, _: Any = None) -> None:
-        self.client.send_message("avr/status/update", self.statuses, qos = 2, retain = True)
+        self.client.send_message("avr/status/update", self.statuses, qos = 2)
