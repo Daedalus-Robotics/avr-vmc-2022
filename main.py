@@ -27,6 +27,9 @@ if not TESTING:
     from vmc.mqtt.fusion import FusionModule
     from vmc.mqtt.vio.vio import VIOModule
 
+main_thread: Thread | None = None
+status_thread: Thread | None = None
+
 mqtt_client = MQTTClient.get("localhost", 1883, True)
 status = Status()
 
@@ -138,4 +141,7 @@ async def main() -> None:
 
 
 if __name__ == '__main__':
-    Thread(target = lambda: asyncio.run(main()), daemon = False).start()
+    main_thread = Thread(target = lambda: asyncio.run(main()), daemon = False)
+    status_thread = Thread(target = ensure_running, daemon = True)
+    main_thread.start()
+    status_thread.start()
