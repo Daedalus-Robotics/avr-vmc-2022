@@ -1,6 +1,7 @@
 import asyncio
 import atexit
 import subprocess
+import sys
 import time
 from threading import Thread
 
@@ -14,8 +15,11 @@ from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
 from vmc.thermal import ThermalCamera
 
-detector = Detector()
-TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
+if (len(sys.argv) > 1) and (sys.argv[1] == "test"):
+    TESTING = True
+else:
+    detector = Detector()
+    TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
 
 if not TESTING:
     from pymavlink import mavutil
