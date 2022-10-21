@@ -52,7 +52,7 @@ class ThermalCamera:
             self.amg = adafruit_amg88xx.AMG88XX(i2c)
             logger.success("Connected to thermal camera!")
         else:
-            self.testing_change_pos = False
+            self.testing_change_pos = 0
             self.testing_pos = (CAMERA_SIZE // 2, CAMERA_SIZE // 2)
 
         Thread(target = self._update_loop, daemon = True).start()
@@ -63,20 +63,19 @@ class ThermalCamera:
             pixels = np.array(self.amg.pixels)
         else:
             x, y = self.testing_pos
-            if self.testing_change_pos:
+            if self.testing_change_pos == 0:
                 x, y = randint(x - 1, x + 1), randint(y - 1, y + 1)
-                self.testing_change_pos = False
-            else:
-                self.testing_change_pos = True
-            if x >= 8:
-                x = 7
-            elif x < 0:
-                x = 0
-            if y >= 8:
-                y = 7
-            elif y < 0:
-                y = 0
-            radius = randint(1, 2)
+                self.testing_pos = (x, y)
+            self.testing_change_pos = (self.testing_change_pos + 1) % 8
+            if x >= 7:
+                x = CAMERA_SIZE // 2
+            elif x < 1:
+                x = CAMERA_SIZE // 2
+            if y >= 7:
+                y = CAMERA_SIZE // 2
+            elif y < 1:
+                y = CAMERA_SIZE // 2
+            radius = 1
             pixels = np.zeros((CAMERA_SIZE, CAMERA_SIZE, 1), np.uint8)
             cv2.circle(pixels, (x, y), radius, 78, -1)
         return pixels
