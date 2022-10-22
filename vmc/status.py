@@ -3,6 +3,9 @@ from typing import Any, Callable
 from vmc.mqtt_client import MQTTClient
 from vmc.status_led import StatusLed, StatusStrip
 
+STOPPED_COLOR = (255, 0, 0)
+RUNNING_COLOR = (0, 255, 0)
+
 
 class Status:
     def __init__(self, status_strip: StatusStrip) -> None:
@@ -34,6 +37,8 @@ class Status:
     def update_status(self, name: str, value: bool) -> None:
         if name in self.statuses:
             self.statuses[name] = value
+            if name in self.status_leds:
+                self.status_leds[name].set_color(RUNNING_COLOR if value else STOPPED_COLOR)
             self.send_update()
 
     def send_update(self, _: Any = None) -> None:
