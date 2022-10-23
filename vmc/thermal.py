@@ -45,7 +45,7 @@ class ThermalCamera:
 
         lower_bound = np.array([0, 0, 200])
         upper_bound = np.array([0, 0, 255])
-        self.detector = Detector(lower_bound, upper_bound, 5)
+        self.detector = Detector(lower_bound, upper_bound, 2)
 
         if not TESTING:
             i2c = board.I2C()
