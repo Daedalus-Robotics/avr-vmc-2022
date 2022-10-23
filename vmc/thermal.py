@@ -182,7 +182,7 @@ class Detector:
                 center_y
             )
 
-            if len(self.previous_positions) > 5:
+            if len(self.previous_positions) > 3:
                 self.previous_positions.pop(0)
             self.previous_positions.append(self.main_detection_center)
 
