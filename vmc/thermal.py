@@ -56,11 +56,24 @@ class ThermalCamera:
             self.testing_pos = (CAMERA_SIZE // 2, CAMERA_SIZE // 2)
 
         Thread(target = self._update_loop, daemon = True).start()
+        Thread(target = self._detection_loop, daemon = True).start()
 
     @property
     def pixels(self) -> np.ndarray:
         if not TESTING:
-            pixels = np.array(self.amg.pixels)
+            pixel_list = self.amg.pixels
+            int_pixel_list = []
+            x = 0
+            for row in pixel_list:
+                y = 0
+                int_row = []
+                for pixel in row:
+                    int_row.append(round(pixel))
+                    y += 1
+                int_pixel_list.append(int_row)
+                x += 1
+            pixels = np.array(int_pixel_list)
+
         else:
             x, y = self.testing_pos
             if self.testing_change_pos == 0:
@@ -113,23 +126,27 @@ class ThermalCamera:
         self.bgr_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
         self.hsv_frame = hsv_frame
 
+    def _detection_loop(self) -> None:
+        while True:
+            frame = self.get_frame(color = False)
+            if frame is not None and frame.shape[0] > 1:
+                self.detector.update(frame)
+
     def _update_loop(self) -> None:
-        counter = 0
         while True:
             self.update_frame()
-            self.detector.update(self.get_frame(color = False))
-            if counter == 0:
-                self._stream()
-            counter = (counter + 1) % 2
-            time.sleep((1 / 30) / 2)
+            self._stream()
+            if TESTING:
+                time.sleep(1 // 15)
 
     def _stream(self) -> None:
         if self.client.is_connected:
             frame = self.get_frame(color = True)
             frame = stream.image_resize(frame, 300)
             frame = self.detector.overlay(frame)
-            encoded_frame = stream.encode_frame_uncompressed(frame)
-            self.client.send_message("avr/raw/thermal/reading", encoded_frame)
+            success, encoded_frame = stream.encode_frame(frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+            if success:
+                self.client.send_message("avr/raw/thermal/reading", encoded_frame)
 
 
 class Detector:
