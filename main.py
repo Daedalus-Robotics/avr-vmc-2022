@@ -7,7 +7,7 @@ from threading import Thread
 
 import mavsdk
 from adafruit_platformdetect import Detector
-from systemctl import Service
+from systemctl import Service, ServiceState
 
 from vmc.frame_server import FrameServer
 from vmc.mqtt_client import MQTTClient
@@ -110,6 +110,9 @@ async def main() -> None:
         mavp2p = Service("mavp2p.service")
         status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart)
         mavp2p.on_state = lambda state: status.update_status("mavp2p", state)
+
+        if not (mavp2p.state == ServiceState.ACTIVE):
+            mavp2p.start()
 
     status.register_status("vmc", True, restart_vmc)
 
