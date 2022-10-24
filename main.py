@@ -99,7 +99,7 @@ async def main() -> None:
     mqtt_client.register_callback("avr/shutdown", lambda: asyncio.run(shutdown_vmc()), is_json = False, use_args = False)
 
     pcc = PeripheralControlComputer()
-    status.register_status("pcc", pcc.is_connected, pcc.reset)
+    status.register_status("pcc", pcc.is_connected, pcc.reset, 0)
     pcc.on_state = lambda state: status.update_status("pcc", state)
     pcc.begin()
     pcc.begin_mqtt()
@@ -108,7 +108,7 @@ async def main() -> None:
         status.register_status("mavp2p", True, lambda: None)
     else:
         mavp2p = Service("mavp2p.service")
-        status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart)
+        status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart, 1)
         mavp2p.on_state = lambda state: status.update_status("mavp2p", state)
 
         if not (mavp2p.state == ServiceState.ACTIVE):
@@ -133,7 +133,7 @@ async def main() -> None:
                 dialect = "bell"
         )
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
-        status.register_status("fcc", False, fcm.gps_fcc.reboot)
+        status.register_status("fcc", False, fcm.gps_fcc.reboot, 2)
         await fcm.run()
 
         fusion = FusionModule()
