@@ -140,8 +140,7 @@ async def main() -> None:
         await fcm.run()
 
 
-    autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, None, None)
-                        # mavlink_system, pymavlink_connection)
+    autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
 
     mqtt_client.connect()
     status.send_update()
