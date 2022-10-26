@@ -9,6 +9,7 @@ import mavsdk
 from adafruit_platformdetect import Detector
 from systemctl import Service, ServiceState
 
+from vmc.autonomy.autonomy import Autonomy
 from vmc.frame_server import FrameServer
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
@@ -45,6 +46,7 @@ if not TESTING:
     mavp2p: Service
     mavlink_system: mavsdk.System
     pymavlink_connection: mavutil.mavudp
+    autonomy: Autonomy
 
 
 @atexit.register
@@ -96,6 +98,7 @@ async def main() -> None:
     global pcc, thermal, frame_server, vio, fcm, fusion
     global mavp2p
     global mavlink_system, pymavlink_connection
+    global autonomy
     mqtt_client.register_callback("avr/shutdown", lambda: asyncio.run(shutdown_vmc()), is_json = False, use_args = False)
 
     pcc = PeripheralControlComputer()
@@ -136,11 +139,14 @@ async def main() -> None:
         status.register_status("fcc", False, fcm.gps_fcc.reboot, 2)
         await fcm.run()
 
-        fusion = FusionModule()
-        Thread(target = fusion.run).start()
+
+    autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, None, None)
+                        # mavlink_system, pymavlink_connection)
 
     mqtt_client.connect()
     status.send_update()
+
+    await autonomy.run()
 
     await asyncio.Future()
 
