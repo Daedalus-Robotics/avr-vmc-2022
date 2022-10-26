@@ -56,7 +56,6 @@ class ThermalCamera:
             self.testing_pos = (CAMERA_SIZE // 2, CAMERA_SIZE // 2)
 
         Thread(target = self._update_loop, daemon = True).start()
-        Thread(target = self._detection_loop, daemon = True).start()
 
     @property
     def pixels(self) -> np.ndarray:
