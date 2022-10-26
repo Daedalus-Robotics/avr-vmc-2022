@@ -1,7 +1,7 @@
 import math
 import time
 from random import randint
-from threading import Thread
+from threading import Barrier, BrokenBarrierError, Thread
 from typing import List
 
 import cv2
@@ -54,6 +54,8 @@ class ThermalCamera:
         else:
             self.testing_change_pos = 0
             self.testing_pos = (CAMERA_SIZE // 2, CAMERA_SIZE // 2)
+
+        self.update_barrier = Barrier(2)
 
         Thread(target = self._update_loop, daemon = True).start()
 
@@ -125,11 +127,12 @@ class ThermalCamera:
         self.bgr_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
         self.hsv_frame = hsv_frame
 
-    def _detection_loop(self) -> None:
-        while True:
-            frame = self.get_frame(color = False)
-            if frame is not None and frame.shape[0] > 1:
-                self.detector.update(frame)
+        self.detector.update(hsv_frame)
+
+        try:
+            self.update_barrier.wait(0)
+        except BrokenBarrierError:
+            self.update_barrier.reset()
 
     def _update_loop(self) -> None:
         while True:
