@@ -15,3 +15,11 @@ def get_max(value1: float | int, value2: float | int):
 
 def constrain(val: float | int, min_val: float | int, max_val: float | int) -> float | int:
     return get_min(max_val, get_max(min_val, val))
+
+
+def deadzone(value: float | int, min_value: float | int) -> float | int:
+    number_type = type(value)
+    if value <= min_value:
+        return number_type(value)
+    else:
+        return value
