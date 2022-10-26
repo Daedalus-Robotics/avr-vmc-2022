@@ -76,20 +76,21 @@ class Gimbal:
             try:
                 self.thermal.update_barrier.wait(5000)
             except BrokenBarrierError:
-                await asyncio.sleep(2)
+                await asyncio.sleep(1)
                 continue
             if self.thermal.detector.currently_detecting:
                 detection = self.thermal.detector.main_detection_center
                 if detection == last_pos:
                     continue
 
-                print("Detection: " + str(detection[0]))
+                print("Detection: " + str(detection))
                 camera_x = int(utils.map(detection[0], 0, 30, 0, CAMERA_FOV) - 15)
+                camera_y = int(utils.map(detection[1], 0, 30, 0, CAMERA_FOV) - 15)
 
-                print("Move amount: " + str(camera_x))
+                print("Move amount: " + str(camera_x) + ", " + str(camera_y))
                 await self.move_x(camera_x)
-
-                await asyncio.sleep(2)
+                #
+                # await asyncio.sleep(2)
 
 
 if __name__ == '__main__':
