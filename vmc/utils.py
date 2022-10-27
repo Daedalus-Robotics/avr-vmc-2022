@@ -19,7 +19,7 @@ def constrain(val: float | int, min_val: float | int, max_val: float | int) -> f
 
 def deadzone(value: float | int, min_value: float | int) -> float | int:
     number_type = type(value)
-    if value <= min_value:
-        return number_type(value)
+    if min_value <= value <= -min_value:
+        return number_type(0)
     else:
         return value
