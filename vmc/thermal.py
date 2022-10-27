@@ -187,8 +187,8 @@ class Detector:
         moments = cv2.moments(self.largest_contour)
 
         self.currently_detecting = True if (len(self.contours) > 0) and (moments['m00'] != 0.0) else False
-        # if not self.currently_detecting:
-        #     self.previous_positions = []
+        if not self.currently_detecting:
+            self.previous_positions = []
 
         if moments['m00'] != 0.0:
             center_x = round(moments['m10'] / moments['m00'])
@@ -201,9 +201,9 @@ class Detector:
                 center_y
             )
 
-            # if len(self.previous_positions) > 3:
-            #     self.previous_positions.pop(0)
-            # self.previous_positions.append(self.main_detection_center)
+            if len(self.previous_positions) > 3:
+                self.previous_positions.pop(0)
+            self.previous_positions.append(self.main_detection_center)
 
             x_cord = center_x
             y_cord = center_y
@@ -215,6 +215,7 @@ class Detector:
             use_x_cord = (x_cord - center_x) > (y_cord - center_y)
 
             self.main_detection_radius = (x_cord if use_x_cord else y_cord) // 2
+        time.sleep(1 / 5)
 
     def overlay(self, frame: np.ndarray, show_contours: bool = False) -> np.ndarray:
         ov_frame = frame.copy()
@@ -284,18 +285,17 @@ class Detector:
 
     @property
     def stabilized_position(self) -> tuple[int, int] | None:
-        # if self.currently_detecting:
-        #     x_sum = 0
-        #     y_sum = 0
-        #     for position in self.previous_positions:
-        #         x_sum += position[0]
-        #         y_sum += position[1]
-        #     x_avg = x_sum // len(self.previous_positions)
-        #     y_avg = y_sum // len(self.previous_positions)
-        #     return x_avg, y_avg
-        # else:
-        #     return None
-        return self.main_detection_center
+        if self.currently_detecting:
+            x_sum = 0
+            y_sum = 0
+            for position in self.previous_positions:
+                x_sum += position[0]
+                y_sum += position[1]
+            x_avg = x_sum // len(self.previous_positions)
+            y_avg = y_sum // len(self.previous_positions)
+            return x_avg, y_avg
+        else:
+            return None
 
 if __name__ == "__main__":
     thermal = ThermalCamera()
