@@ -99,7 +99,12 @@ async def main() -> None:
     global mavp2p
     global mavlink_system, pymavlink_connection
     global autonomy
-    mqtt_client.register_callback("avr/shutdown", lambda: asyncio.run(shutdown_vmc()), is_json = False, use_args = False)
+    mqtt_client.register_callback(
+            "avr/shutdown",
+            lambda: asyncio.run(shutdown_vmc()),
+            is_json = False,
+            use_args = False
+    )
 
     pcc = PeripheralControlComputer()
     status.register_status("pcc", pcc.is_connected, pcc.reset, 0)
@@ -146,6 +151,9 @@ async def main() -> None:
     status.send_update()
 
     await autonomy.run()
+
+    mqtt_client.connect()
+    status.send_update()
 
     await asyncio.Future()
 
