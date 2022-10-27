@@ -1,4 +1,4 @@
-import asyncio
+import time
 from threading import BrokenBarrierError
 
 from vmc import utils
@@ -12,11 +12,11 @@ SERVO_RANGE = 180
 CAMERA_FOV = 80
 FULL_RANGE = SERVO_RANGE + CAMERA_FOV
 
-X_LIMITS = (800, 1500)
-X_CENTER = 50
+X_LIMITS = (500, 2500)
+X_CENTER = 90
 
 Y_LIMITS = (500, 2500)
-Y_CENTER = 50
+Y_CENTER = 90
 
 
 class Gimbal:
@@ -28,69 +28,127 @@ class Gimbal:
         self.y_servo = y_servo
         self.thermal = thermal
 
-        # self.pcc.set_servo_min(self.x_servo, X_LIMITS[0])
-        # self.pcc.set_servo_max(self.x_servo, X_LIMITS[1])
-        #
-        # self.pcc.set_servo_min(self.y_servo, Y_LIMITS[0])
-        # self.pcc.set_servo_max(self.y_servo, Y_LIMITS[1])
+        self.pcc.set_servo_min(self.x_servo, X_LIMITS[0])
+        self.pcc.set_servo_max(self.x_servo, X_LIMITS[1])
 
+        self.pcc.set_servo_min(self.y_servo, Y_LIMITS[0])
+        self.pcc.set_servo_max(self.y_servo, Y_LIMITS[1])
+
+        self.auto_aim_enabled = False
+        self.do_single_aim = False
         self.last_x: int | None = None
         self.last_y: int | None = None
 
-    async def disable(self) -> None:
+        self.client.register_callback("avr/gimbal/disable", lambda: self.disable(), is_json = False, use_args = False)
+        self.client.register_callback("avr/gimbal/center", lambda: self.center(), is_json = False, use_args = False)
+        self.client.register_callback(
+                "avr/gimbal/pos",
+                lambda payload: self.set_pos(payload.get("x", X_CENTER), payload.get("y", Y_CENTER)),
+                is_json = True,
+                use_args = True
+        )
+        self.client.register_callback(
+                "avr/gimbal/trigger_aim",
+                lambda: self.trigger_auto_aim(),
+                is_json = False,
+                use_args = False
+        )
+        self.client.register_callback(
+                "avr/gimbal/auto_aim",
+                lambda payload: self.set_auto_aim(payload.get("enabled", False)),
+                is_json = True,
+                use_args = True
+        )
+
+    def disable(self) -> None:
         self.pcc.disable_servo(self.x_servo)
         self.pcc.disable_servo(self.y_servo)
 
-    async def center(self) -> None:
-        await self.set_pos(X_CENTER, Y_CENTER)
+    def center(self) -> None:
+        self.set_pos(X_CENTER, Y_CENTER)
 
-    async def set_x(self, x: int) -> None:
-        self.pcc.set_servo_pct(self.x_servo, x)
+    def set_x(self, x: int) -> None:
         self.last_x = x
+        x = int(utils.map(x, 0, SERVO_RANGE, 0, 100))
+        self.pcc.set_servo_pct(self.x_servo, x)
 
-    async def set_y(self, y: int) -> None:
-        self.pcc.set_servo_pct(self.y_servo, y)
+    def set_y(self, y: int) -> None:
         self.last_y = y
+        y = int(utils.map(y, 0, SERVO_RANGE, 0, 100))
+        self.pcc.set_servo_pct(self.y_servo, y)
 
-    async def set_pos(self, x: int, y: int) -> None:
-        await self.set_x(x)
-        await self.set_y(y)
+    def set_pos(self, x: int, y: int) -> None:
+        self.set_x(x)
+        self.set_y(y)
 
-    async def move_x(self, x: int):
-        x = int(utils.constrain(utils.map(self.last_x + x, 0, SERVO_RANGE, 0, 100), 0, SERVO_RANGE))
-        await self.set_x(x)
+    def move_x(self, x: int):
+        x = int(utils.constrain(self.last_x + x, 0, SERVO_RANGE))
+        print("last_x: " + str(self.last_x))
+        print("degrees: " + str(x))
+        self.set_x(x)
 
-    async def move_y(self, y: int):
-        y = int(utils.constrain(utils.map(self.last_y + y, 0, SERVO_RANGE, 0, 100), 0, SERVO_RANGE))
-        await self.set_y(y)
+    def move_y(self, y: int):
+        y = int(utils.constrain(self.last_y + y, 0, SERVO_RANGE))
+        print("last_y: " + str(self.last_y))
+        print("degrees: " + str(y))
+        self.set_y(y)
 
-    async def move(self, x: int, y: int):
-        await self.move_x(x)
-        await self.move_y(y)
+    def move(self, x: int, y: int):
+        self.move_x(x)
+        self.move_y(y)
 
-    async def run(self) -> None:
+    def trigger_auto_aim(self) -> None:
+        self.do_single_aim = True
+
+    def set_auto_aim(self, enabled: bool) -> None:
+        self.auto_aim_enabled = enabled
+
+    def run(self) -> None:
         logger.info("Gimbal started")
-        await self.center()
-        last_pos = False
+        self.center()
+        aimed_last = None
         while True:
-            try:
-                self.thermal.update_barrier.wait(5000)
-            except BrokenBarrierError:
-                await asyncio.sleep(1)
-                continue
-            if self.thermal.detector.currently_detecting:
-                detection = self.thermal.detector.main_detection_center
-                if detection == last_pos:
+            if self.auto_aim_enabled or self.do_single_aim:
+                self.do_single_aim = False
+                aimed_last = True
+                try:
+                    self.thermal.update_barrier.wait(2000)
+                except BrokenBarrierError:
+                    time.sleep(1)
                     continue
+                if self.thermal.detector.currently_detecting:
+                    detection = self.thermal.detector.main_detection_center
 
-                print("Detection: " + str(detection))
-                camera_x = int(utils.map(detection[0], 0, 30, 0, CAMERA_FOV) - 15)
-                camera_y = int(utils.map(detection[1], 0, 30, 0, CAMERA_FOV) - 15)
+                    print("Detection: " + str(detection))
+                    x_degrees = utils.map(detection[0], 0, 30, 0, CAMERA_FOV)
+                    print("1: " + str(x_degrees))
+                    x_degrees = utils.map(x_degrees, 0, 80, -40, 40)
+                    print("2: " + str(x_degrees))
+                    x_degrees = int(utils.constrain(x_degrees, -40, 40))
+                    print("3: " + str(x_degrees))
+                    # x_degrees = utils.deadzone(int(x_degrees), 10)
+                    x_degrees = utils.deadzone(x_degrees, 10)
+                    x_degrees_half = int(x_degrees / 2)
+                    # x_degrees_half = x_degrees
+                    # camera_y = utils.deadzone(int(utils.map(detection[1], 0, 30, 0, CAMERA_FOV) - 15), 10)
 
-                print("Move amount: " + str(camera_x) + ", " + str(camera_y))
-                await self.move_x(camera_x)
-                #
-                # await asyncio.sleep(2)
+                    y_degrees = utils.map(detection[1], 0, 30, 0, CAMERA_FOV)
+                    y_degrees = utils.map(y_degrees, 0, 80, -40, 40)
+                    y_degrees = int(utils.constrain(y_degrees, -40, 40))
+                    # y_degrees = utils.deadzone(int(y_degrees), 10)
+                    y_degrees = utils.deadzone(y_degrees, 10)
+                    y_degrees_half = int(y_degrees / 2)
+                    # y_degrees_half = y_degrees
+
+                    print("Move amount: " + str(x_degrees_half) + ", " + str(y_degrees_half))  # + ", " + str(camera_y))
+                    self.move_x(x_degrees_half)
+                    self.move_y(y_degrees_half)
+
+                    time.sleep(1 / 2)
+            else:
+                if aimed_last:
+                    self.center()
+                aimed_last = False
 
 
 if __name__ == '__main__':
@@ -103,3 +161,5 @@ if __name__ == '__main__':
     gimbal = Gimbal(test_pcc, 2, 3, thermal_cam)
 
     gimbal.client.connect()
+
+    gimbal.run()
