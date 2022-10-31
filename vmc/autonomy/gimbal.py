@@ -48,6 +48,12 @@ class Gimbal:
                 use_args = True
         )
         self.client.register_callback(
+                "avr/gimbal/move",
+                lambda payload: self.move(payload.get("x", 0), payload.get("y", 0)),
+                is_json = True,
+                use_args = True
+        )
+        self.client.register_callback(
                 "avr/gimbal/trigger_aim",
                 lambda: self.trigger_auto_aim(),
                 is_json = False,
