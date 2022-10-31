@@ -77,18 +77,7 @@ def restart_vmc() -> None:
 async def shutdown_vmc() -> None:
     if not TESTING:
         stop()
-        time.sleep(1)
-        tune = mavsdk.system.tune.TuneDescription([
-            mavsdk.system.tune.SongElement.DURATION_1,
-            mavsdk.system.tune.SongElement.NOTE_C,
-            mavsdk.system.tune.SongElement.NOTE_B,
-            mavsdk.system.tune.SongElement.NOTE_A,
-            mavsdk.system.tune.SongElement.NOTE_PAUSE,
-            mavsdk.system.tune.SongElement.NOTE_PAUSE,
-            mavsdk.system.tune.SongElement.NOTE_D
-        ], 120)
-        await mavlink_system.tune.play_tune(tune)
-        time.sleep(1)
+        time.sleep(2)
         subprocess.Popen(["sudo", "shutdown", "now"])
         await asyncio.Future()
 
