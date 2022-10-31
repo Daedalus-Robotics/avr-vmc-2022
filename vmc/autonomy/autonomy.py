@@ -32,4 +32,4 @@ class Autonomy:
 
     async def run(self) -> None:
         self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
-        Thread(target = lambda: asyncio.run(self.gimbal.run()), daemon = True).start()
+        Thread(target = lambda: self.gimbal.run(), daemon = True).start()
