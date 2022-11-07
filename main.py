@@ -147,6 +147,9 @@ async def main() -> None:
         fusion = FusionModule(vio, fcm)
         Thread(target = fusion.run).start()
 
+    # ToDo: move this to a reasonable spot
+    pcc.set_servo_max(1, 1000)
+
     autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
 
     await autonomy.run()
