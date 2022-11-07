@@ -232,20 +232,20 @@ class FlightControlComputer(FCMMQTTModule):
         """
         return asyncio.gather(
                 self.connected_status_telemetry(),
-                # self.battery_telemetry(),
-                # self.in_air_telemetry(),
-                # self.is_armed_telemetry(),
-                # self.flight_mode_telemetry(),
-                # self.landed_state_telemetry(),
-                # self.position_ned_telemetry(),
-                # self.position_lla_telemetry(),
-                # self.home_lla_telemetry(),
-                # self.attitude_euler_telemetry(),
-                # self.velocity_ned_telemetry(),
-                # self.gps_info_telemetry(),
+                self.battery_telemetry(),
+                self.in_air_telemetry(),
+                self.is_armed_telemetry(),
+                self.flight_mode_telemetry(),
+                self.landed_state_telemetry(),
+                self.position_ned_telemetry(),
+                self.position_lla_telemetry(),
+                self.home_lla_telemetry(),
+                self.attitude_euler_telemetry(),
+                self.velocity_ned_telemetry(),
+                self.gps_info_telemetry(),
         )
 
-    # @async_try_except()
+    @async_try_except()
     async def connected_status_telemetry(self) -> None:
         """
         Runs the connected_status telemetry loop

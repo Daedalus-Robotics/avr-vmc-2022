@@ -160,9 +160,6 @@ async def main() -> None:
     mqtt_client.connect()
     status.send_update()
 
-    # print("Done")
-    # await fcm.fcc.
-
     await asyncio.Future()
 
 
