@@ -129,6 +129,17 @@ async def main() -> None:
                 source_system = 142,
                 dialect = "bell"
         )
+
+        def set_armed(state: dict):
+            arm = state.get("arm", None)
+            if arm is not None:
+                if arm:
+                    pymavlink_connection.arducopter_arm()
+                else:
+                    pymavlink_connection.arducopter_disarm()
+
+        mqtt_client.register_callback("avr/arm", set_armed, is_json = True, use_args = True, qos = 2)
+
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
         status.register_status("fcc", False, fcm.gps_fcc.reboot, 2)
         await fcm.run()
