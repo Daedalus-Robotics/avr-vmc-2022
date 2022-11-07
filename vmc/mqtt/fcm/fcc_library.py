@@ -7,7 +7,6 @@ import time
 from typing import Any, Callable, List
 
 import mavsdk
-import pymavlink.mavutil
 from bell.avr.mqtt.payloads import (
     AvrFcmAttitudeEulerPayload,
     AvrFcmBatteryPayload,
@@ -783,7 +782,7 @@ class PyMAVLinkAgent:
         self.mavlink_connection: mavutil.mavudp = connection
 
         self.client = MQTTClient.get()
-        self.client.register_callback("avr/fusion/hil_gps", self.hilgps_msg_handler)
+        # self.client.register_callback("avr/fusion/hil_gps", self.hilgps_msg_handler)
 
         self.num_frames = 0
 

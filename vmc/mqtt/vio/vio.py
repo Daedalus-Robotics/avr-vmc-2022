@@ -34,6 +34,18 @@ class VIOModule(MQTTModule):
         # mqtt
         self.topic_map = {"avr/vio/resync": self.handle_resync}
 
+        self.position_ned = None
+        self.orientation_eul = None
+        self.vio_heading = None
+        self.velocity_ned = None
+        self.vio_confidence = None
+
+        self.position_ned_func = lambda thing: None
+        self.orientation_eul_func = lambda thing: None
+        self.vio_heading_func = lambda thing: None
+        self.velocity_ned_func = lambda thing: None
+        self.vio_confidence_func = lambda thing: None
+
     def handle_resync(self, payload: AvrVioResyncPayload) -> None:
         # whenever new data is published to the ZEDCamera resync topic, we need to compute a new correction
         # to compensate for sensor drift over time.
@@ -62,7 +74,9 @@ class VIOModule(MQTTModule):
         ned_update = AvrVioPositionNedPayload(n = n, e = e, d = d)  # cm
 
         # noinspection PyTypeChecker
-        self.send_message("avr/vio/position/ned", ned_update)
+        # self.send_message("avr/vio/position/ned", ned_update)
+        self.position_ned = ned_update
+        self.position_ned_func(self.position_ned)
 
         if np.isnan(rpy).any():
             raise ValueError("Camera has NaNs for orientation")
@@ -70,7 +84,9 @@ class VIOModule(MQTTModule):
         # send orientation update
         eul_update = AvrVioOrientationEulPayload(psi = rpy[0], theta = rpy[1], phi = rpy[2])
         # noinspection PyTypeChecker
-        self.send_message("avr/vio/orientation/eul", eul_update)
+        # self.send_message("avr/vio/orientation/eul", eul_update)
+        self.orientation_eul = eul_update
+        self.orientation_eul_func(self.orientation_eul)
 
         # send heading update
         heading = rpy[2]
@@ -80,7 +96,9 @@ class VIOModule(MQTTModule):
         heading = np.rad2deg(heading)
         heading_update = AvrVioHeadingPayload(degrees = heading)
         # noinspection PyTypeChecker
-        self.send_message("avr/vio/heading", heading_update)
+        # self.send_message("avr/vio/heading", heading_update)
+        self.vio_heading = heading_update
+        self.vio_heading_func(self.vio_heading)
         # coord_trans.heading = rpy[2]
 
         if np.isnan(ned_vel).any():
@@ -89,13 +107,17 @@ class VIOModule(MQTTModule):
         # send velocity update
         vel_update = AvrVioVelocityNedPayload(n = ned_vel[0], e = ned_vel[1], d = ned_vel[2])
         # noinspection PyTypeChecker
-        self.send_message("avr/vio/velocity/ned", vel_update)
+        # self.send_message("avr/vio/velocity/ned", vel_update)
+        self.velocity_ned = vel_update
+        self.velocity_ned_func(self.velocity_ned)
 
         confidence_update = AvrVioConfidencePayload(
                 tracker = tracker_confidence,
         )
         # noinspection PyTypeChecker
-        self.send_message("avr/vio/confidence", confidence_update)
+        # self.send_message("avr/vio/confidence", confidence_update)
+        self.vio_confidence = confidence_update
+        self.vio_confidence_func(self.vio_confidence)
 
     @run_forever(frequency = 10)
     @try_except(reraise = False)

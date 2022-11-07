@@ -133,7 +133,7 @@ async def main() -> None:
         status.register_status("fcc", False, fcm.gps_fcc.reboot, 2)
         await fcm.run()
 
-        fusion = FusionModule()
+        fusion = FusionModule(vio, fcm)
         Thread(target = fusion.run).start()
 
     autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
