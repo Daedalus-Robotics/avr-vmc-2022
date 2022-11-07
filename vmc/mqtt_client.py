@@ -6,8 +6,6 @@ from typing import Any, Callable
 from loguru import logger
 from paho.mqtt import client as mqtt
 
-from vmc.status import Status
-
 DEFAULT_QOS = 1
 
 
@@ -15,12 +13,12 @@ class MQTTClient:
     _instance = None
 
     @classmethod
-    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True, status: Status = None) -> 'MQTTClient':
+    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True, status: Any = None) -> 'MQTTClient':
         if cls._instance is None:
             cls._instance = MQTTClient(host, port, retry, status)
         return cls._instance
 
-    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True, status: Status = None):
+    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True, status: Any = None):
         self._instance = self
 
         self.host = host
