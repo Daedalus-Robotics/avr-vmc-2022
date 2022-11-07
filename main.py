@@ -161,7 +161,7 @@ async def main() -> None:
 
 
 if __name__ == '__main__':
-    main_thread = Thread(target = lambda: asyncio.run(main()), daemon = True)
+    main_thread = Thread(target = lambda: asyncio.run(main()), daemon = False)
     # status_thread = Thread(target = ensure_running, daemon = True)
     main_thread.start()
     # status_thread.start()
