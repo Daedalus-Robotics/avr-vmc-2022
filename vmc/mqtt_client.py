@@ -34,7 +34,7 @@ class MQTTClient:
         self.topic_map: dict[str, tuple[Callable, bool, int, Any, Any, bool]] = {}
         self._connected = False
 
-        status.register_status("mqtt", False, None, led_num = 0)
+        # status.register_status("mqtt", False, None, led_num = 0)
 
     @property
     def is_connected(self) -> bool:
@@ -56,7 +56,7 @@ class MQTTClient:
     def _on_connect(self, _: mqtt.Client, __: Any, ___: dict, rc: int):
         self._connected = True
         logger.debug(f"Connected with result {rc}")
-        self.status.update_status("mqtt", True)
+        # self.status.update_status("mqtt", True)
 
         for topic, info in self.topic_map.items():
             _, _, qos, options, properties, _ = info
@@ -65,7 +65,7 @@ class MQTTClient:
 
     def _on_disconnect(self, _: mqtt.Client, __: Any, rc: int, ___: dict = None):
         logger.debug(f"Disconnected with result {rc}")
-        self.status.update_status("mqtt", True)
+        # self.status.update_status("mqtt", True)
         if self.retry and rc is not mqtt.DISCONNECT:
             Thread(target = self._reconnect_loop).start()
 
