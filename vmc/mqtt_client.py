@@ -6,6 +6,8 @@ from typing import Any, Callable
 from loguru import logger
 from paho.mqtt import client as mqtt
 
+from vmc.status import Status
+
 DEFAULT_QOS = 1
 
 
@@ -13,17 +15,18 @@ class MQTTClient:
     _instance = None
 
     @classmethod
-    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True) -> 'MQTTClient':
+    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True, status: Status = None) -> 'MQTTClient':
         if cls._instance is None:
-            cls._instance = MQTTClient(host, port, retry)
+            cls._instance = MQTTClient(host, port, retry, status)
         return cls._instance
 
-    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True):
+    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True, status: Status = None):
         self._instance = self
 
         self.host = host
         self.port = port
         self.retry = retry
+        self.status = status
 
         self.client = mqtt.Client(protocol = mqtt.MQTTv311)
         self.client.on_connect = self._on_connect
@@ -32,6 +35,8 @@ class MQTTClient:
 
         self.topic_map: dict[str, tuple[Callable, bool, int, Any, Any, bool]] = {}
         self._connected = False
+
+        status.register_status("mqtt", False, None, led_num = 0)
 
     @property
     def is_connected(self) -> bool:
@@ -53,6 +58,7 @@ class MQTTClient:
     def _on_connect(self, _: mqtt.Client, __: Any, ___: dict, rc: int):
         self._connected = True
         logger.debug(f"Connected with result {rc}")
+        self.status.update_status("mqtt", True)
 
         for topic, info in self.topic_map.items():
             _, _, qos, options, properties, _ = info
@@ -61,6 +67,7 @@ class MQTTClient:
 
     def _on_disconnect(self, _: mqtt.Client, __: Any, rc: int, ___: dict = None):
         logger.debug(f"Disconnected with result {rc}")
+        self.status.update_status("mqtt", True)
         if self.retry and rc is not mqtt.DISCONNECT:
             Thread(target = self._reconnect_loop).start()
 
