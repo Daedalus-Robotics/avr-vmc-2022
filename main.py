@@ -36,17 +36,17 @@ mqtt_client = MQTTClient.get("localhost", 1883, True)
 status_strip = StatusStrip(8)
 status = Status(status_strip)
 
-pcc: PeripheralControlComputer
-thermal: ThermalCamera
-frame_server: FrameServer
+pcc: PeripheralControlComputer | None = None
+thermal: ThermalCamera | None = None
+frame_server: FrameServer | None = None
 if not TESTING:
-    vio: VIOModule
-    fcm: FlightControlModule
-    fusion: FusionModule
-    mavp2p: Service
-    mavlink_system: mavsdk.System
-    pymavlink_connection: mavutil.mavudp
-    autonomy: Autonomy
+    vio: VIOModule | None = None
+    fcm: FlightControlModule | None = None
+    fusion: FusionModule | None = None
+    mavp2p: Service | None = None
+    mavlink_system: mavsdk.System | None = None
+    pymavlink_connection: mavutil.mavudp | None = None
+    autonomy: Autonomy | None = None
 
 
 @atexit.register
