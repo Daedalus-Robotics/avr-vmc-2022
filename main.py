@@ -171,3 +171,5 @@ if __name__ == '__main__':
     # status_thread = Thread(target = ensure_running, daemon = True)
     main_thread.start()
     # status_thread.start()
+    while True:
+        pass
