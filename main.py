@@ -7,6 +7,7 @@ from threading import Thread
 
 import mavsdk
 from adafruit_platformdetect import Detector
+from loguru import logger
 from systemctl import Service, ServiceState
 
 from vmc.autonomy.autonomy import Autonomy
@@ -23,7 +24,9 @@ else:
     detector = Detector()
     TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
 
-if not TESTING:
+if TESTING:
+    logger.info("Running in test mode")
+else:
     from pymavlink import mavutil
     from vmc.mqtt.fcm.fcm import FlightControlModule
     from vmc.mqtt.fusion import FusionModule

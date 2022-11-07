@@ -25,7 +25,7 @@ from bell.avr.serial.client import SerialLoop
 from loguru import logger
 from serial import SerialException
 
-from mqtt_client import MQTTClient
+from .mqtt_client import MQTTClient
 
 PLATFORM = Detector()
 DEFAULT_DEVICE_TYPE = "ttyACM" if True in (
