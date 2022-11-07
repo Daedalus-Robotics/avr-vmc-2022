@@ -10,7 +10,13 @@ RUNNING_COLOR = (0, 255, 0)
 class Status:
     def __init__(self, status_strip: StatusStrip) -> None:
         self.client = MQTTClient.get()
-        self.client.register_callback("avr/status/request_update", self.send_update, is_json = False, qos = 2)
+        self.client.register_callback(
+                "avr/status/request_update",
+                self.send_update,
+                qos = 2,
+                is_json = False,
+                use_args = False
+        )
 
         self.status_strip = status_strip
 
@@ -41,5 +47,5 @@ class Status:
                 self.status_leds[name].set_color(RUNNING_COLOR if value else STOPPED_COLOR)
             self.send_update()
 
-    def send_update(self, _: Any = None) -> None:
+    def send_update(self) -> None:
         self.client.send_message("avr/status/update", self.statuses, qos = 2)
