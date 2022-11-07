@@ -538,5 +538,6 @@ if __name__ == "__main__":
     pcc = PeripheralControlComputer()
     pcc.begin()
     pcc.begin_mqtt()
+    pcc.module.client.connect()
     while True:
         pass
