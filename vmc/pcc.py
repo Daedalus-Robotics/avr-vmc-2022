@@ -25,7 +25,7 @@ from bell.avr.serial.client import SerialLoop
 from loguru import logger
 from serial import SerialException
 
-from .mqtt_client import MQTTClient
+from mqtt_client import MQTTClient
 
 PLATFORM = Detector()
 DEFAULT_DEVICE_TYPE = "ttyACM" if True in (
@@ -535,5 +535,8 @@ class PeripheralControlModule:
 
 
 if __name__ == "__main__":
-    pcm = PeripheralControlModule(PeripheralControlComputer())
-    pcm.client.connect()
+    pcc = PeripheralControlComputer()
+    pcc.begin()
+    pcc.begin_mqtt()
+    while True:
+        pass
