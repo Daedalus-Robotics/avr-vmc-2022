@@ -13,9 +13,11 @@ CAMERA_FOV = 80
 FULL_RANGE = SERVO_RANGE + CAMERA_FOV
 
 X_LIMITS = (500, 2500)
+X_SOFT_LIMIT = (0, 180)
 X_CENTER = 90
 
 Y_LIMITS = (500, 2500)
+Y_SOFT_LIMIT = (50, 180)
 Y_CENTER = 90
 
 
@@ -74,14 +76,16 @@ class Gimbal:
         self.set_pos(X_CENTER, Y_CENTER)
 
     def set_x(self, x: int) -> None:
-        self.last_x = x
-        x = int(utils.map(x, 0, SERVO_RANGE, 0, 100))
-        self.pcc.set_servo_pct(self.x_servo, x)
+        if X_SOFT_LIMIT[0] <= x <= X_SOFT_LIMIT[1]:
+            self.last_x = x
+            x = int(utils.map(x, 0, SERVO_RANGE, 0, 100))
+            self.pcc.set_servo_pct(self.x_servo, x)
 
     def set_y(self, y: int) -> None:
-        self.last_y = y
-        y = int(utils.map(y, 0, SERVO_RANGE, 0, 100))
-        self.pcc.set_servo_pct(self.y_servo, y)
+        if Y_SOFT_LIMIT[0] <= y <= Y_SOFT_LIMIT[1]:
+            self.last_y = y
+            y = int(utils.map(y, 0, SERVO_RANGE, 0, 100))
+            self.pcc.set_servo_pct(self.y_servo, y)
 
     def set_pos(self, x: int, y: int) -> None:
         self.set_x(x)
@@ -89,14 +93,14 @@ class Gimbal:
 
     def move_x(self, x: int):
         x = int(utils.constrain(self.last_x + x, 0, SERVO_RANGE))
-        print("last_x: " + str(self.last_x))
-        print("degrees: " + str(x))
+        # print("last_x: " + str(self.last_x))
+        # print("degrees: " + str(x))
         self.set_x(x)
 
     def move_y(self, y: int):
         y = int(utils.constrain(self.last_y + y, 0, SERVO_RANGE))
-        print("last_y: " + str(self.last_y))
-        print("degrees: " + str(y))
+        # print("last_y: " + str(self.last_y))
+        # print("degrees: " + str(y))
         self.set_y(y)
 
     def move(self, x: int, y: int):
@@ -125,13 +129,13 @@ class Gimbal:
                 if self.thermal.detector.currently_detecting:
                     detection = self.thermal.detector.main_detection_center
 
-                    print("Detection: " + str(detection))
+                    # print("Detection: " + str(detection))
                     x_degrees = utils.map(detection[0], 0, 30, 0, CAMERA_FOV)
-                    print("1: " + str(x_degrees))
+                    # print("1: " + str(x_degrees))
                     x_degrees = utils.map(x_degrees, 0, 80, -40, 40)
-                    print("2: " + str(x_degrees))
+                    # print("2: " + str(x_degrees))
                     x_degrees = int(utils.constrain(x_degrees, -40, 40))
-                    print("3: " + str(x_degrees))
+                    # print("3: " + str(x_degrees))
                     # x_degrees = utils.deadzone(int(x_degrees), 10)
                     x_degrees = utils.deadzone(x_degrees, 10)
                     x_degrees_half = int(x_degrees / 2)
@@ -146,9 +150,8 @@ class Gimbal:
                     y_degrees_half = int(y_degrees / 2)
                     # y_degrees_half = y_degrees
 
-                    print("Move amount: " + str(x_degrees_half) + ", " + str(y_degrees_half))  # + ", " + str(camera_y))
-                    self.move_x(x_degrees_half)
-                    self.move_y(y_degrees_half)
+                    # print("Move amount: " + str(x_degrees_half) + ", " + str(y_degrees_half))# + ", " + str(camera_y))
+                    self.move(x_degrees_half, y_degrees_half)
 
                     time.sleep(1 / 2)
             else:
