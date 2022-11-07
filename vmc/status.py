@@ -39,6 +39,7 @@ class Status:
                 )
             if led_num >= 0:
                 self.status_leds[name] = self.status_strip.get_status_led(led_num)
+                self.status_leds[name].set_color(RUNNING_COLOR if initial_value else STOPPED_COLOR)
 
     def update_status(self, name: str, value: bool) -> None:
         if name in self.statuses:
