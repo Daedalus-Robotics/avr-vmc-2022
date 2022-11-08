@@ -1,17 +1,18 @@
 import asyncio
 import atexit
 import subprocess
-import sys
 import time
 from threading import Thread
 
 import mavsdk
-from adafruit_platformdetect import Detector
 from loguru import logger
 from systemctl import Service, ServiceState
 
 from vmc.autonomy.autonomy import Autonomy
 from vmc.frame_server import FrameServer
+from vmc.mqtt.fcm.fcm import FlightControlModule
+from vmc.mqtt.fusion import FusionModule
+from vmc.mqtt.vio.vio import VIOModule
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
