@@ -23,6 +23,8 @@ class AprilTagModule:
     def __init__(self) -> None:
         self.client = MQTTClient.get()
 
+        self.process: subprocess.Popen | None = None
+
         self.config: dict = {
             "cam": {
                 "pos": [0, 0, 8.5],  # cm from FC forward, right, down
@@ -41,6 +43,9 @@ class AprilTagModule:
         self.setup_transforms()
 
         self.client.register_callback("avr/apriltags/raw", self.on_apriltag_message)
+
+    def close(self) -> None:
+        self.process.terminate()
 
     def setup_transforms(self) -> None:
         cam_rpy = self.config["cam"]["rpy"]
@@ -280,8 +285,7 @@ class AprilTagModule:
     def run(self) -> None:
         dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../c/avrapriltags")
         os.system(f"chmod a+x {dir_path}")
-        subprocess.Popen(dir_path)
-        super().run_non_blocking()
+        self.process = subprocess.Popen(dir_path)
 
 
 if __name__ == "__main__":
