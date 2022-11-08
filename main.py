@@ -45,6 +45,18 @@ pymavlink_connection: mavutil.mavudp | None = None
 autonomy: Autonomy | None = None
 
 
+def set_armed(state: bool | dict):
+    if isinstance(state, dict):
+        arm = state.get("arm", None)
+    else:
+        arm = state
+    if arm is not None:
+        if arm:
+            pymavlink_connection.arducopter_arm()
+        else:
+            pymavlink_connection.arducopter_disarm()
+
+
 @atexit.register
 def stop() -> None:
     pcc.color_wipe(10)
@@ -124,15 +136,6 @@ async def main(start_modules: list[str]) -> None:
                 source_system = 142,
                 dialect = "bell"
         )
-
-        def set_armed(state: dict):
-            arm = state.get("arm", None)
-            if arm is not None:
-                if arm:
-                    pymavlink_connection.arducopter_arm()
-                else:
-                    pymavlink_connection.arducopter_disarm()
-
         mqtt_client.register_callback("avr/arm", set_armed, is_json = True, use_args = True, qos = 2)
 
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
