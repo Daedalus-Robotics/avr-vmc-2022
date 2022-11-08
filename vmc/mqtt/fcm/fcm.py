@@ -3,6 +3,7 @@ import asyncio
 import mavsdk
 from pymavlink import mavutil
 
+from vmc.status_led import StatusStrip
 from .fcc_library import FlightControlComputer, PyMAVLinkAgent
 from ...status import Status
 
@@ -21,5 +22,5 @@ class FlightControlModule:
 
 if __name__ == "__main__":
     # noinspection PyTypeChecker
-    fcm = FlightControlModule(None, None, Status())
+    fcm = FlightControlModule(None, None, Status(StatusStrip(8)))
     asyncio.run(fcm.run())
