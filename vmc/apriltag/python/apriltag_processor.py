@@ -15,15 +15,13 @@ from bell.avr.mqtt.payloads import (
     AvrApriltagsVisibleTagsPosWorld,
 )
 
-from ...mqtt.mqttmodule import MQTTModule
+from ...mqtt_client import MQTTClient
 
 warnings.simplefilter("ignore", np.RankWarning)
 
-# ToDo: Use better mqtt_client
-
-class AprilTagModule(MQTTModule):
+class AprilTagModule:
     def __init__(self) -> None:
-        super().__init__()
+        self.client = MQTTClient.get()
 
         self.config: dict = {
             "cam": {
@@ -42,7 +40,7 @@ class AprilTagModule(MQTTModule):
         # setup transformation matrixes
         self.setup_transforms()
 
-        self.topic_map = {"avr/apriltags/raw": self.on_apriltag_message}
+        self.client.register_callback("avr/apriltags/raw", self.on_apriltag_message)
 
     def setup_transforms(self) -> None:
         cam_rpy = self.config["cam"]["rpy"]
@@ -125,7 +123,7 @@ class AprilTagModule(MQTTModule):
 
             tag_list.append(tag)
 
-        self.send_message(
+        self.client.send_message(
                 "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags = tag_list)
         )
 
@@ -147,7 +145,7 @@ class AprilTagModule(MQTTModule):
                     heading = tag_list[closest_tag]["heading"],
             )
 
-            self.send_message("avr/apriltags/selected", apriltag_position)
+            self.client.send_message("avr/apriltags/selected", apriltag_position)
 
     def angle_to_tag(self, pos: Tuple[float, float, float]) -> float:
         deg = math.degrees(
