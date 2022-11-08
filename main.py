@@ -105,6 +105,7 @@ def stop() -> None:
     mqtt_client.disconnect()
     logger.log("SETUP", "Done stopping!")
 
+
 def restart_vmc() -> None:
     logger.info("Restarting vmc...")
     stop()
@@ -212,7 +213,8 @@ async def main(start_modules: list[str]) -> None:
 
     if "apriltag" in start_modules:
         logger.log("SETUP", "Setting up apriltag...")
-        apriltag = AprilTagModule()
+        status.register_status("apriltag", False, None, 4)
+        apriltag = AprilTagModule(status)
 
         logger.log("SETUP", "Starting apriltag...")
         Thread(target = apriltag.run, daemon = True).start()

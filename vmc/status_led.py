@@ -35,7 +35,7 @@ class StatusLed:
     def set_color_rgb(self, r: int, g: int, b: int) -> None:
         self.set_color((r, g, b))
 
-    def flash_color(self, color: tuple[int, int, int], timeout: int) -> None:
+    def flash_color(self, color: tuple[int, int, int], timeout: float) -> None:
         self.strip.pixels[self.led_num] = color
         self.strip.pixels.show()
         Timer(timeout, lambda: self.set_color(self.color)).start()

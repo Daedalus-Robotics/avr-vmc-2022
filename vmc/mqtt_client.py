@@ -99,12 +99,11 @@ class MQTTClient:
                 else:
                     callback()
                 if self.status is not None:
-                    ms = int(round(time.time() * 1000))
-                    timesince = ms - self._last_flash
-                    if timesince < 100:
-                        return
-                    self._last_flash = ms
-                    self.status.led_event("mqtt", (255, 100, 0), 50)
+                    ss = time.time()
+                    timesince = ss - self._last_flash
+                    if timesince >= 0.5:
+                        self.status.led_event("mqtt", (255, 100, 0), 0.2)
+                        self._last_flash = ss
             except (AttributeError, TypeError, json.JSONDecodeError) as e:
                 logger.warning(f"Failed to run callback for topic {msg.topic}")
                 logger.warning(e)

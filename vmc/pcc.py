@@ -75,10 +75,6 @@ class PeripheralControlComputer:
         self.shutdown: bool = True
         self.serial_error: bool = False
         self.port_thread: Thread | None = None
-        atexit.register(self.__atexit__)
-
-    def __atexit__(self) -> None:
-        self.dev.close()
 
     def begin(self) -> None:
         if self.shutdown:
@@ -90,6 +86,7 @@ class PeripheralControlComputer:
         if self.shutdown:
             self.shutdown = True
             self.port_thread.join(5)
+        self.dev.close()
 
     def begin_mqtt(self) -> None:
         if self.module is None:

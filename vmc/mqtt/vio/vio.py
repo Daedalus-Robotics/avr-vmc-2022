@@ -1,6 +1,6 @@
 import math
 import time
-from threading import Thread
+from threading import Barrier, BrokenBarrierError, Thread
 from typing import Tuple
 
 import numpy as np
@@ -52,9 +52,20 @@ class VIOModule:
         self.vio_confidence_func = lambda thing: None
 
         self.running = False
+        self.running_barrier1 = Barrier(2)
+        self.running_barrier2 = Barrier(2)
 
     def close(self) -> None:
         self.running = False
+        try:
+            self.running_barrier1.wait(2)
+        except BrokenBarrierError:
+            pass
+        try:
+            self.running_barrier2.wait(2)
+        except BrokenBarrierError:
+            pass
+        self.camera.zed.close()
 
     def handle_resync(self, payload: AvrVioResyncPayload) -> None:
         # whenever new data is published to the ZEDCamera resync topic, we need to compute a new correction
@@ -148,6 +159,10 @@ class VIOModule:
                     data["tracker_confidence"],
             )
             time.sleep(1 / 10)
+            try:
+                self.running_barrier1.wait(0)
+            except BrokenBarrierError:
+                pass
 
     @try_except(reraise = False)
     def update_frames(self) -> None:
@@ -158,6 +173,10 @@ class VIOModule:
                 self.frame_server.update_frame(left, CameraType.ZED_LEFT, 60, 480)
                 self.frame_server.update_frame(depth, CameraType.ZED_DEPTH, 60, 480)
             time.sleep(1 / 10)
+            try:
+                self.running_barrier2.wait(0)
+            except BrokenBarrierError:
+                pass
 
     def run(self) -> None:
         self.running = True

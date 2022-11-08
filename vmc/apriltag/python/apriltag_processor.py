@@ -2,6 +2,7 @@ import math
 import os
 import subprocess
 import warnings
+from threading import Thread
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -15,13 +16,16 @@ from bell.avr.mqtt.payloads import (
     AvrApriltagsVisibleTagsPosWorld,
 )
 
+from ...status import Status
 from ...mqtt_client import MQTTClient
 
 warnings.simplefilter("ignore", np.RankWarning)
 
 class AprilTagModule:
-    def __init__(self) -> None:
+    def __init__(self, status: Status) -> None:
         self.client = MQTTClient.get()
+
+        self.status = status
 
         self.process: subprocess.Popen | None = None
 
@@ -282,10 +286,17 @@ class AprilTagModule:
                 heading,
             )
 
+    def _status_loop(self) -> None:
+        self.status.update_status("apriltag", True)
+        while self.process.poll() is None:
+            pass
+        self.status.update_status("apriltag", False)
+
     def run(self) -> None:
         dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../c/avrapriltags")
         os.system(f"chmod a+x {dir_path}")
         self.process = subprocess.Popen(dir_path)
+        Thread(target = self._status_loop, daemon = True).start()
 
 
 if __name__ == "__main__":

@@ -48,7 +48,7 @@ class Status:
                 self.status_leds[name].set_color(RUNNING_COLOR if value else STOPPED_COLOR)
             self.send_update()
 
-    def led_event(self, name: str, color: tuple[int, int, int], timeout: int):
+    def led_event(self, name: str, color: tuple[int, int, int], timeout: float):
         if name in self.status_leds:
             self.status_leds[name].flash_color(color, timeout)
 
