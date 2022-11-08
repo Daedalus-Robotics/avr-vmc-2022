@@ -25,9 +25,9 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
-from vmc.mqtt.fcm.fcm import FlightControlModule
-from vmc.mqtt.mqttmodule import MQTTModule
-from vmc.mqtt.vio.vio import VIOModule
+from .fcm.fcm import FlightControlModule
+from .mqttmodule import MQTTModule
+from .vio.vio import VIOModule
 
 MSG_INTERVAL = 500
 

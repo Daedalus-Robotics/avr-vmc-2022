@@ -18,7 +18,7 @@ class MQTTClient:
             cls._instance = MQTTClient(host, port, retry, status)
         return cls._instance
 
-    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True, status: Any = None):
+    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True, status: Any = None) -> None:
         self._instance = self
 
         self.host = host
@@ -34,7 +34,7 @@ class MQTTClient:
         self.topic_map: dict[str, tuple[Callable, bool, int, Any, Any, bool]] = {}
         self._connected = False
 
-        # status.register_status("mqtt", False, None, led_num = 0)
+        self._last_flash = 0
 
     @property
     def is_connected(self) -> bool:
@@ -56,7 +56,8 @@ class MQTTClient:
     def _on_connect(self, _: mqtt.Client, __: Any, ___: dict, rc: int):
         self._connected = True
         logger.debug(f"Connected with result {rc}")
-        # self.status.update_status("mqtt", True)
+        if self.status is not None:
+            self.status.update_status("mqtt", True)
 
         for topic, info in self.topic_map.items():
             _, _, qos, options, properties, _ = info
@@ -65,7 +66,8 @@ class MQTTClient:
 
     def _on_disconnect(self, _: mqtt.Client, __: Any, rc: int, ___: dict = None):
         logger.debug(f"Disconnected with result {rc}")
-        # self.status.update_status("mqtt", True)
+        if self.status is not None:
+            self.status.update_status("mqtt", False)
         if self.retry and rc is not mqtt.DISCONNECT:
             Thread(target = self._reconnect_loop).start()
 
@@ -102,8 +104,15 @@ class MQTTClient:
                     callback(payload)
                 else:
                     callback()
+                if self.status is not None:
+                    ms = int(round(time.time() * 1000))
+                    timesince = ms - self._last_flash
+                    if timesince < 100:
+                        return
+                    self._last_flash = ms
+                    self.status.led_event("mqtt", (255, 100, 0), 50)
             except (AttributeError, TypeError, json.JSONDecodeError) as e:
-                logger.warning(f"Filed to run callback for topic {msg.topic}")
+                logger.warning(f"Failed to run callback for topic {msg.topic}")
                 logger.warning(e)
 
     def send_message(
@@ -113,7 +122,10 @@ class MQTTClient:
         if serializable:
             payload = json_payload
         try:
-            self.client.publish(topic, payload, qos = qos, retain = retain, properties = properties)
+            if self.is_connected:
+                self.client.publish(topic, payload, qos = qos, retain = retain, properties = properties)
+            else:
+                logger.warning("Can't publish. MQTT disconnected")
             return True
         except TypeError:
             return False

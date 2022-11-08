@@ -5,10 +5,10 @@ import mavsdk
 from pymavlink import mavutil
 from pyzed import sl
 
-from vmc.autonomy.gimbal import Gimbal
-from vmc.mqtt_client import MQTTClient
-from vmc.pcc import PeripheralControlComputer
-from vmc.thermal import ThermalCamera
+from .gimbal import Gimbal
+from ..mqtt_client import MQTTClient
+from ..pcc import PeripheralControlComputer
+from ..thermal import ThermalCamera
 
 
 class Autonomy:

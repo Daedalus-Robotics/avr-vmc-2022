@@ -10,7 +10,7 @@ from adafruit_platformdetect import Detector as PlatformDetector
 from colour import Color
 from loguru import logger
 
-from vmc.mqtt_client import MQTTClient
+from .mqtt_client import MQTTClient
 from . import stream
 from .utils import constrain, map
 

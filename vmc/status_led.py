@@ -1,4 +1,5 @@
-# noinspection PyPackageRequirements
+from threading import Timer
+
 import board
 import neopixel_spi
 
@@ -13,7 +14,7 @@ class StatusStrip:
         self.status_leds = {}
 
     def get_status_led(self, led_num: int):
-        if not led_num in self.status_leds:
+        if led_num not in self.status_leds:
             self.status_leds[led_num] = StatusLed(self, led_num)
         return self.status_leds.get(led_num, None)
 
@@ -33,3 +34,8 @@ class StatusLed:
 
     def set_color_rgb(self, r: int, g: int, b: int) -> None:
         self.set_color((r, g, b))
+
+    def flash_color(self, color: tuple[int, int, int], timeout: int) -> None:
+        self.strip.pixels[self.led_num] = color
+        self.strip.pixels.show()
+        Timer(timeout, lambda: self.set_color(self.color)).start()
