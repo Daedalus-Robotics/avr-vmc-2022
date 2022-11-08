@@ -60,10 +60,11 @@ class MQTTClient:
         if self.status is not None:
             self.status.update_status("mqtt", True)
 
-        for topic, info in self.topic_map.items():
-            _, _, qos, options, properties, _ = info
-            self.client.subscribe(topic, qos = qos, options = options, properties = properties)
-            logger.success(f"Subscribed to: {topic}")
+        with self.topic_map_lock:
+            for topic, info in self.topic_map.items():
+                _, _, qos, options, properties, _ = info
+                self.client.subscribe(topic, qos = qos, options = options, properties = properties)
+                logger.success(f"Subscribed to: {topic}")
 
     def _on_disconnect(self, _: mqtt.Client, __: Any, rc: int, ___: dict = None):
         logger.debug(f"Disconnected with result {rc}")

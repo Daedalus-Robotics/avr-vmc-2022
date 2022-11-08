@@ -11,6 +11,7 @@ from loguru import logger
 from pymavlink import mavutil
 from systemctl import Service, ServiceState
 
+from vmc.apriltag.python.apriltag_processor import AprilTagModule
 from vmc.autonomy.autonomy import Autonomy
 from vmc.frame_server import FrameServer
 from vmc.mqtt.fcm.fcm import FlightControlModule
@@ -34,14 +35,15 @@ status.register_status("mqtt", False, None, led_num = 0)
 mqtt_client.status = status
 
 pcc: PeripheralControlComputer | None = None
+mavp2p: Service | None = None
 thermal: ThermalCamera | None = None
 frame_server: FrameServer | None = None
 vio: VIOModule | None = None
-fcm: FlightControlModule | None = None
-fusion: FusionModule | None = None
-mavp2p: Service | None = None
 mavlink_system: mavsdk.System | None = None
 pymavlink_connection: mavutil.mavudp | None = None
+fcm: FlightControlModule | None = None
+fusion: FusionModule | None = None
+apriltag: AprilTagModule | None = None
 autonomy: Autonomy | None = None
 
 
@@ -91,10 +93,15 @@ async def shutdown_vmc() -> None:
 
 async def main(start_modules: list[str]) -> None:
     global mqtt_client, status
-    global pcc, thermal, frame_server, vio, fcm, fusion
+    global pcc, thermal, frame_server
     global mavp2p
+    global vio
     global mavlink_system, pymavlink_connection
+    global fcm, fusion
+    global apriltag
     global autonomy
+
+    mqtt_client.connect()
 
     status.register_status("vmc", True, restart_vmc)
     mqtt_client.register_callback(
@@ -139,7 +146,7 @@ async def main(start_modules: list[str]) -> None:
 
         # ToDo: Make this less horrible
         logger.log("SETUP", "Starting vio...")
-        Thread(target = vio.run, daemon = True).start()
+        Thread(target = vio.run, daemon = False).start()
 
     if "mavsdk" in start_modules:
         logger.log("SETUP", "Setting up connection to mavP2P using mavsdk...")
@@ -167,13 +174,17 @@ async def main(start_modules: list[str]) -> None:
 
         # ToDo: Make this less horrible
         logger.log("SETUP", "Starting fusion...")
-        Thread(target = fusion.run).start()
+        Thread(target = fusion.run, daemon = False).start()
+
+    if "apriltag" in start_modules:
+        logger.log("SETUP", "Setting up apriltag...")
+        apriltag = AprilTagModule()
+
+        logger.log("SETUP", "Starting apriltag...")
+        Thread(target = apriltag.run, daemon = False).start()
 
     # ToDo: move this to a reasonable spot
     pcc.set_servo_max(1, 1000)
-
-    mqtt_client.connect()
-    status.send_update()
 
     if "autonomy" in start_modules:
         logger.log("SETUP", "Setting up autonomy...")
@@ -181,6 +192,8 @@ async def main(start_modules: list[str]) -> None:
 
         logger.log("SETUP", "Starting autonomy...")
         await autonomy.run()
+
+    status.send_update()
 
     logger.log("SETUP", "Setup Done!")
     await asyncio.Future()
@@ -237,6 +250,12 @@ if __name__ == '__main__':
             help = "Stream the local position of the avr drone. Requires fcm and vio"
     )
     parser.add_argument(
+            "--apriltag",
+            action = "store_true",
+            default = False,
+            help = "Start detecting apriltags with the csi camera. Requires fusion"
+    )
+    parser.add_argument(
             "-a",
             "--autonomy",
             action = "store_true",
@@ -256,6 +275,9 @@ if __name__ == '__main__':
     if not (True in args.values()) or args.get("autonomy", False):
         for k in args:
             args[k] = True
+    # if args.get("apriltag", False):
+    #     if "apriltag" in args:
+    #         args["apriltag"] = True
     if args.get("fusion", False):
         if "fcm" in args:
             args["fcm"] = True

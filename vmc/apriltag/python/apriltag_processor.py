@@ -1,11 +1,11 @@
 import math
+import os
 import subprocess
 import warnings
 from typing import List, Optional, Tuple
 
 import numpy as np
 import transforms3d as t3d
-from bell.avr.mqtt.client import MQTTModule
 from bell.avr.mqtt.payloads import (
     AvrApriltagsRawPayload,
     AvrApriltagsRawTags,
@@ -15,14 +15,15 @@ from bell.avr.mqtt.payloads import (
     AvrApriltagsVisibleTagsPosWorld,
 )
 
+from ...mqtt.mqttmodule import MQTTModule
+
 warnings.simplefilter("ignore", np.RankWarning)
 
+# ToDo: Use better mqtt_client
 
 class AprilTagModule(MQTTModule):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.mqtt_host = "localhost"
-        self.mqtt_port = 1883
 
         self.config: dict = {
             "cam": {
@@ -48,10 +49,10 @@ class AprilTagModule(MQTTModule):
 
         # rotation matrix
         rmat = t3d.euler.euler2mat(
-            cam_rpy[0],
-            cam_rpy[1],
-            cam_rpy[2],
-            axes="rxyz",
+                cam_rpy[0],
+                cam_rpy[1],
+                cam_rpy[2],
+                axes = "rxyz",
         )
 
         H_cam_aeroBody = t3d.affines.compose(self.config["cam"]["pos"], rmat, [1, 1, 1])
@@ -62,7 +63,7 @@ class AprilTagModule(MQTTModule):
         for tag, tag_data in self.config["tag_truth"].items():
             name = f"tag_{tag}"
             rmat = t3d.euler.euler2mat(
-                tag_data["rpy"][0], tag_data["rpy"][1], tag_data["rpy"][2], axes="rxyz"
+                    tag_data["rpy"][0], tag_data["rpy"][1], tag_data["rpy"][2], axes = "rxyz"
             )
             tag_tf = t3d.affines.compose(tag_data["xyz"], rmat, [1, 1, 1])
 
@@ -94,29 +95,29 @@ class AprilTagModule(MQTTModule):
                 continue
 
             tag = AvrApriltagsVisibleTags(
-                id=id_,
-                horizontal_dist=horizontal_distance,
-                vertical_dist=vertical_distance,
-                angle_to_tag=angle,
-                heading=heading,
-                pos_rel={
-                    "x": pos_rel[0],
-                    "y": pos_rel[1],
-                    "z": pos_rel[2],
-                },
-                pos_world={
-                    "x": None,
-                    "y": None,
-                    "z": None,
-                },
+                    id = id_,
+                    horizontal_dist = horizontal_distance,
+                    vertical_dist = vertical_distance,
+                    angle_to_tag = angle,
+                    heading = heading,
+                    pos_rel = {
+                        "x": pos_rel[0],
+                        "y": pos_rel[1],
+                        "z": pos_rel[2],
+                    },
+                    pos_world = {
+                        "x": None,
+                        "y": None,
+                        "z": None,
+                    },
             )
 
             # add some more info if we had the truth data for the tag
             if pos_world is not None and pos_world.any():
                 tag["pos_world"] = AvrApriltagsVisibleTagsPosWorld(
-                    x=pos_world[0],
-                    y=pos_world[1],
-                    z=pos_world[2],
+                        x = pos_world[0],
+                        y = pos_world[1],
+                        z = pos_world[2],
                 )
                 if horizontal_distance < min_dist:
                     min_dist = horizontal_distance
@@ -125,7 +126,7 @@ class AprilTagModule(MQTTModule):
             tag_list.append(tag)
 
         self.send_message(
-            "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags=tag_list)
+                "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags = tag_list)
         )
 
         if closest_tag is not None:
@@ -137,20 +138,20 @@ class AprilTagModule(MQTTModule):
             assert pos_world["z"] is not None
 
             apriltag_position = AvrApriltagsSelectedPayload(
-                tag_id=tag_list[closest_tag]["id"],
-                pos={
-                    "n": pos_world["x"],
-                    "e": pos_world["y"],
-                    "d": pos_world["z"],
-                },
-                heading=tag_list[closest_tag]["heading"],
+                    tag_id = tag_list[closest_tag]["id"],
+                    pos = {
+                        "n": pos_world["x"],
+                        "e": pos_world["y"],
+                        "d": pos_world["z"],
+                    },
+                    heading = tag_list[closest_tag]["heading"],
             )
 
             self.send_message("avr/apriltags/selected", apriltag_position)
 
     def angle_to_tag(self, pos: Tuple[float, float, float]) -> float:
         deg = math.degrees(
-            math.atan2(pos[1], pos[0])
+                math.atan2(pos[1], pos[0])
         )  # TODO - i think plus pi/2 bc this is respect to +x
 
         if deg < 0.0:
@@ -159,7 +160,7 @@ class AprilTagModule(MQTTModule):
         return deg
 
     def world_angle_to_tag(
-        self, pos: Tuple[float, float, float], tag_id: int
+            self, pos: Tuple[float, float, float], tag_id: int
     ) -> Optional[float]:
         """
         returns the angle with respect to "north" in the "world frame"
@@ -170,7 +171,7 @@ class AprilTagModule(MQTTModule):
         del_x = self.config["tag_truth"][str(tag_id)]["xyz"][0] - pos[0]
         del_y = self.config["tag_truth"][str(tag_id)]["xyz"][1] - pos[1]
         deg = math.degrees(
-            math.atan2(del_y, del_x)
+                math.atan2(del_y, del_x)
         )  # TODO - i think plus pi/2 bc this is respect to +x
 
         if deg < 0.0:
@@ -188,20 +189,20 @@ class AprilTagModule(MQTTModule):
 
         R_t = np.transpose(R)
         H_rot = t3d.affines.compose(
-            [0, 0, 0],
-            R_t,
-            [1, 1, 1],
+                [0, 0, 0],
+                R_t,
+                [1, 1, 1],
         )
         H_tran = t3d.affines.compose(
-            [-1 * T[0], -1 * T[1], -1 * T[2]],
-            np.eye(3),
-            [1, 1, 1],
+                [-1 * T[0], -1 * T[1], -1 * T[2]],
+                np.eye(3),
+                [1, 1, 1],
         )
 
         return H_rot.dot(H_tran)
 
     def handle_tag(
-        self, tag: AvrApriltagsRawTags
+            self, tag: AvrApriltagsRawTags
     ) -> Tuple[
         int,
         float,
@@ -220,11 +221,11 @@ class AprilTagModule(MQTTModule):
 
         tag_rot = np.asarray(tag["rotation"])
         rpy = t3d.euler.mat2euler(tag_rot)
-        R = t3d.euler.euler2mat(0, 0, rpy[2], axes="rxyz")
+        R = t3d.euler.euler2mat(0, 0, rpy[2], axes = "rxyz")
         H_tag_cam = t3d.affines.compose(
-            [tag["pos"]["x"] * 100, tag["pos"]["y"] * 100, tag["pos"]["z"] * 100],
-            R,
-            [1, 1, 1],
+                [tag["pos"]["x"] * 100, tag["pos"]["y"] * 100, tag["pos"]["z"] * 100],
+                R,
+                [1, 1, 1],
         )
         T, R, Z, S = t3d.affines.decompose44(H_tag_cam)
 
@@ -279,10 +280,14 @@ class AprilTagModule(MQTTModule):
             )
 
     def run(self) -> None:
-        subprocess.Popen("c/avrapriltags")
-        super().run()
+        dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../c/avrapriltags")
+        os.system(f"chmod a+x {dir_path}")
+        subprocess.Popen(dir_path)
+        super().run_non_blocking()
 
 
 if __name__ == "__main__":
     atag = AprilTagModule()
     atag.run()
+    while True:
+        pass
