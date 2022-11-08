@@ -1,7 +1,7 @@
 from typing import Callable
 
-from vmc.mqtt_client import MQTTClient
-from vmc.status_led import StatusLed, StatusStrip
+from .mqtt_client import MQTTClient
+from .status_led import StatusLed, StatusStrip
 
 STOPPED_COLOR = (255, 0, 0)
 RUNNING_COLOR = (0, 255, 0)

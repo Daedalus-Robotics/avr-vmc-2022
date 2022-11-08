@@ -1,10 +1,10 @@
 import time
 from threading import BrokenBarrierError
 
-from vmc import utils
-from vmc.mqtt_client import MQTTClient
-from vmc.pcc import PeripheralControlComputer
-from vmc.thermal import ThermalCamera
+from .. import utils
+from ..mqtt_client import MQTTClient
+from ..pcc import PeripheralControlComputer
+from ..thermal import ThermalCamera
 
 from loguru import logger
 

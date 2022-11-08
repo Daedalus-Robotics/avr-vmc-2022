@@ -9,8 +9,8 @@ import cv2
 import numpy as np
 from loguru import logger
 
-from vmc import stream
-from vmc.mqtt_client import MQTTClient
+from . import stream
+from .mqtt_client import MQTTClient
 
 socket.setdefaulttimeout(0.5)
 MAX_MESSAGE_SIZE = 9000
