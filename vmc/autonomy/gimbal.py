@@ -1,5 +1,5 @@
 import time
-from threading import BrokenBarrierError
+from threading import Barrier, BrokenBarrierError
 
 from .. import utils
 from ..mqtt_client import MQTTClient
@@ -68,6 +68,17 @@ class Gimbal:
                 use_args = True
         )
 
+        self.running = False
+        self.running_barrier = Barrier(2)
+
+    def close(self) -> None:
+        self.running = False
+        try:
+            self.running_barrier.wait(2)
+        except BrokenBarrierError:
+            pass
+        self.disable()
+
     def disable(self) -> None:
         self.pcc.disable_servo(self.x_servo)
         self.pcc.disable_servo(self.y_servo)
@@ -115,9 +126,10 @@ class Gimbal:
 
     def run(self) -> None:
         logger.info("Gimbal started")
+        self.running = True
         self.center()
         aimed_last = None
-        while True:
+        while self.running:
             if self.auto_aim_enabled or self.do_single_aim:
                 self.do_single_aim = False
                 aimed_last = True
@@ -125,6 +137,7 @@ class Gimbal:
                     self.thermal.update_barrier.wait(2000)
                 except BrokenBarrierError:
                     time.sleep(1)
+                    logger.warning("Thermal camera is taking too long to respond")
                     continue
                 if self.thermal.detector.currently_detecting:
                     detection = self.thermal.detector.main_detection_center
@@ -158,6 +171,10 @@ class Gimbal:
                 if aimed_last:
                     self.center()
                 aimed_last = False
+            try:
+                self.running_barrier.wait(0)
+            except BrokenBarrierError:
+                pass
 
 
 if __name__ == '__main__':

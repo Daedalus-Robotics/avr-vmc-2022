@@ -1,5 +1,6 @@
 import math
 import time
+from threading import Barrier, BrokenBarrierError
 
 import numpy as np
 import pymap3d
@@ -25,16 +26,16 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
+from vmc.mqtt_client import MQTTClient
 from .fcm.fcm import FlightControlModule
-from .mqttmodule import MQTTModule
 from .vio.vio import VIOModule
 
-MSG_INTERVAL = 500
+MSG_INTERVAL = 1
 
 
-class FusionModule(MQTTModule):
+class FusionModule:
     def __init__(self, vio: VIOModule, fcm: FlightControlModule) -> None:
-        super().__init__()
+        self.client = MQTTClient.get()
 
         self.fusion_attitude_heading = None
         self.last_attitude_heading = 0
@@ -100,6 +101,16 @@ class FusionModule(MQTTModule):
         self.deriv = [0, 0, 0]
         self.last_apriltag = time.time()
 
+        self.running = False
+        self.running_barrier = Barrier(2)
+
+    def close(self) -> None:
+        self.running = False
+        try:
+            self.running_barrier.wait(2)
+        except BrokenBarrierError:
+            pass
+
     @try_except(reraise = True)
     def local_to_geo(self, payload: AvrFusionPositionNedPayload) -> None:
         """
@@ -120,12 +131,12 @@ class FusionModule(MQTTModule):
                 lat = float(lla[0]), lon = float(lla[1]), alt = float(lla[2])
         )
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_geo
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_geo
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/geo", geo_update)
-        self.last_geo = ms
+            self.client.send_message("avr/fusion/geo", geo_update)
+            self.last_geo = ss
         self.fusion_geo = geo_update
 
     @try_except(reraise = True)
@@ -142,12 +153,12 @@ class FusionModule(MQTTModule):
                 n = payload["n"], e = payload["e"], d = payload["d"]
         )
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_pos_ned
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_pos_ned
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/position/ned", pos_update)
-        self.last_pos_ned = ms
+            self.client.send_message("avr/fusion/position/ned", pos_update)
+            self.last_pos_ned = ss
         self.fusion_pos_ned = pos_update
 
     @try_except(reraise = True)
@@ -167,12 +178,12 @@ class FusionModule(MQTTModule):
                 Vn = payload["n"], Ve = payload["e"], Vd = payload["d"]
         )
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_vel_ned
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_vel_ned
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/velocity/ned", vmc_vel_update)
-        self.last_vel_ned = ms
+            self.client.send_message("avr/fusion/velocity/ned", vmc_vel_update)
+            self.last_vel_ned = ss
         self.fusion_vel_ned = vmc_vel_update
 
         # logger.debug("avr/fusion/velocity/ned message sent")
@@ -181,12 +192,12 @@ class FusionModule(MQTTModule):
         gs = np.linalg.norm([payload["n"], payload["e"]])
         groundspeed_update = AvrFusionGroundspeedPayload(groundspeed = float(gs))
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_groundspeed
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_groundspeed
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/groundspeed", groundspeed_update)
-        self.last_groundspeed = ms
+            self.client.send_message("avr/fusion/groundspeed", groundspeed_update)
+            self.last_groundspeed = ss
         self.fusion_groundspeed = groundspeed_update
 
         # arctan gets real noisy when the values get small, so we just lock course
@@ -201,12 +212,12 @@ class FusionModule(MQTTModule):
             course = math.degrees(course)
             course_update = AvrFusionCoursePayload(course = course)
 
-            ms = int(round(time.time() * 1000))
-            timesince = ms - self.last_course
-            if not timesince >= MSG_INTERVAL:
+            ss = time.time()
+            timesince = ss - self.last_course
+            if timesince >= MSG_INTERVAL:
                 # noinspection PyTypeChecker
-                self.send_message("avr/fusion/course", course_update)
-            self.last_course = ms
+                self.client.send_message("avr/fusion/course", course_update)
+            self.last_course = ss
             self.fusion_course = course_update
 
         m_per_s_2_ft_per_min = 196.85
@@ -214,12 +225,12 @@ class FusionModule(MQTTModule):
                 climb_rate_fps = -1 * payload["d"] * m_per_s_2_ft_per_min
         )
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_climbrate
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_climbrate
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/climbrate", climb_rate_update)
-        self.last_climbrate = ms
+            self.client.send_message("avr/fusion/climbrate", climb_rate_update)
+            self.last_climbrate = ss
         self.fusion_climbrate = climb_rate_update
 
     @try_except(reraise = True)
@@ -235,12 +246,12 @@ class FusionModule(MQTTModule):
                 w = payload["w"], x = payload["x"], y = payload["y"], z = payload["z"]
         )
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_attitude_quat
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_attitude_quat
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/attitude/quat", quat_update)
-        self.last_attitude_quat = ms
+            self.client.send_message("avr/fusion/attitude/quat", quat_update)
+            self.last_attitude_quat = ss
         self.fusion_attitude_quat = quat_update
 
     @try_except(reraise = True)
@@ -256,12 +267,12 @@ class FusionModule(MQTTModule):
                 psi = payload["psi"], theta = payload["theta"], phi = payload["phi"]
         )
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_attitude_euler
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_attitude_euler
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/attitude/euler", euler_update)
-        self.last_attitude_euler = ms
+            self.client.send_message("avr/fusion/attitude/euler", euler_update)
+            self.last_attitude_euler = ss
         self.fusion_attitude_euler = euler_update
 
     @try_except(reraise = True)
@@ -275,12 +286,12 @@ class FusionModule(MQTTModule):
         """
         heading_update = AvrFusionAttitudeHeadingPayload(heading = payload["degrees"])
 
-        ms = int(round(time.time() * 1000))
-        timesince = ms - self.last_attitude_heading
-        if not timesince >= MSG_INTERVAL:
+        ss = time.time()
+        timesince = ss - self.last_attitude_heading
+        if timesince >= MSG_INTERVAL:
             # noinspection PyTypeChecker
-            self.send_message("avr/fusion/attitude/heading", heading_update)
-        self.last_attitude_heading = ms
+            self.client.send_message("avr/fusion/attitude/heading", heading_update)
+            self.last_attitude_heading = ss
         self.fusion_attitude_heading = heading_update
 
         # if the groundspeed is below the threshold, we lock the course to the heading
@@ -298,7 +309,6 @@ class FusionModule(MQTTModule):
                     course = payload["degrees"]
             )
 
-    @run_forever(frequency = 10)
     @try_except(reraise = False)
     def assemble_hil_gps_message(self) -> None:
         """
@@ -306,88 +316,94 @@ class FusionModule(MQTTModule):
         message that is exactly what the FCC needs to generate the hil_gps message
         (with heading)
         """
-        # if "avr/fusion/geo" not in self.message_cache:
-        if self.fusion_geo is None:
-            logger.debug("Waiting for avr/fusion/geo to be populated")
-            return
+        while self.running:
+            # if "avr/fusion/geo" not in self.message_cache:
+            if self.fusion_geo is None:
+                logger.debug("Waiting for avr/fusion/geo to be populated")
+                return
 
-        # geodetic = self.message_cache["avr/fusion/geo"]
-        geodetic = self.fusion_geo
-        lat = int(geodetic["lat"] * 10000000)  # convert to int32 format
-        lon = int(geodetic["lon"] * 10000000)  # convert to int32 format
+            # geodetic = self.message_cache["avr/fusion/geo"]
+            geodetic = self.fusion_geo
+            lat = int(geodetic["lat"] * 10000000)  # convert to int32 format
+            lon = int(geodetic["lon"] * 10000000)  # convert to int32 format
 
-        # if lat / lon is 0, that means the ned -> lla conversion hasn't run yet,
-        # don't send that data to FCC
-        if lat == 0 or lon == 0:
-            return
+            # if lat / lon is 0, that means the ned -> lla conversion hasn't run yet,
+            # don't send that data to FCC
+            if lat == 0 or lon == 0:
+                return
 
-        # if "avr/fusion/velocity/ned" not in self.message_cache:
-        if self.fusion_vel_ned is None:
-            logger.debug("Waiting for avr/fusion/velocity/ned to be populated")
-            return
-        # elif self.message_cache["avr/fusion/velocity/ned"]["Vn"] is None:
-        elif self.fusion_vel_ned["Vn"] is None:
-            logger.debug("avr/fusion/velocity/ned/vn message cache is empty")
-            return
+            # if "avr/fusion/velocity/ned" not in self.message_cache:
+            if self.fusion_vel_ned is None:
+                logger.debug("Waiting for avr/fusion/velocity/ned to be populated")
+                return
+            # elif self.message_cache["avr/fusion/velocity/ned"]["Vn"] is None:
+            elif self.fusion_vel_ned["Vn"] is None:
+                logger.debug("avr/fusion/velocity/ned/vn message cache is empty")
+                return
 
-        crs = 0
-        # if "avr/fusion/course" in self.message_cache:
-        if self.fusion_course is not None:
-            # if self.message_cache["avr/fusion/course"]["course"] is not None:
-            #     crs = int(self.message_cache["avr/fusion/course"]["course"])
-            if self.fusion_course["course"] is not None:
-                crs = int(self.fusion_course["course"])
-        else:
-            logger.debug("Waiting for avr/fusion/course message to be populated")
-            return
+            crs = 0
+            # if "avr/fusion/course" in self.message_cache:
+            if self.fusion_course is not None:
+                # if self.message_cache["avr/fusion/course"]["course"] is not None:
+                #     crs = int(self.message_cache["avr/fusion/course"]["course"])
+                if self.fusion_course["course"] is not None:
+                    crs = int(self.fusion_course["course"])
+            else:
+                logger.debug("Waiting for avr/fusion/course message to be populated")
+                return
 
-        gs = 0
-        # if "avr/fusion/groundspeed" in self.message_cache:
-        if self.fusion_groundspeed is not None:
-            # if self.message_cache["avr/fusion/groundspeed"]["groundspeed"] is not None:
-            #     gs = int(self.message_cache["avr/fusion/groundspeed"]["groundspeed"])
-            if self.fusion_groundspeed["groundspeed"] is not None:
-                gs = int(self.fusion_groundspeed["groundspeed"])
-        else:
-            logger.debug("avr/fusion/groundspeed message cache is empty")
-            return
+            gs = 0
+            # if "avr/fusion/groundspeed" in self.message_cache:
+            if self.fusion_groundspeed is not None:
+                # if self.message_cache["avr/fusion/groundspeed"]["groundspeed"] is not None:
+                #     gs = int(self.message_cache["avr/fusion/groundspeed"]["groundspeed"])
+                if self.fusion_groundspeed["groundspeed"] is not None:
+                    gs = int(self.fusion_groundspeed["groundspeed"])
+            else:
+                logger.debug("avr/fusion/groundspeed message cache is empty")
+                return
 
-        # if "avr/fusion/attitude/heading" in self.message_cache:
-        if self.fusion_attitude_heading is not None:
-            heading = int(
-                    # self.message_cache["avr/fusion/attitude/heading"]["heading"] * 100
-                    self.fusion_attitude_heading["heading"] * 100
+            # if "avr/fusion/attitude/heading" in self.message_cache:
+            if self.fusion_attitude_heading is not None:
+                heading = int(
+                        # self.message_cache["avr/fusion/attitude/heading"]["heading"] * 100
+                        self.fusion_attitude_heading["heading"] * 100
+                )
+            else:
+                logger.debug("Waiting for avr/fusion/attitude/heading to be populated")
+                return
+
+            hil_gps_update = AvrFusionHilGpsPayload(
+                    time_usec = int(time.time() * 1000000),
+                    fix_type = int(self.config["hil_gps_constants"]["fix_type"]),  # 3 - 3D fix
+                    lat = lat,
+                    lon = lon,
+                    alt = int(
+                            # self.message_cache["avr/fusion/geo"]["alt"] * 1000
+                            self.fusion_geo["alt"] * 1000
+                    ),  # convert m to mm
+                    eph = int(self.config["hil_gps_constants"]["eph"]),  # cm
+                    epv = int(self.config["hil_gps_constants"]["epv"]),  # cm
+                    vel = gs,
+                    # vn = int(self.message_cache["avr/fusion/velocity/ned"]["Vn"]),
+                    # ve = int(self.message_cache["avr/fusion/velocity/ned"]["Ve"]),
+                    # vd = int(self.message_cache["avr/fusion/velocity/ned"]["Vd"]),
+                    vn = int(self.fusion_vel_ned["Vn"]),
+                    ve = int(self.fusion_vel_ned["Ve"]),
+                    vd = int(self.fusion_vel_ned["Vd"]),
+                    cog = int(crs * 100),
+                    satellites_visible = int(
+                            self.config["hil_gps_constants"]["satellites_visible"]
+                    ),
+                    heading = heading,
             )
-        else:
-            logger.debug("Waiting for avr/fusion/attitude/heading to be populated")
-            return
-
-        hil_gps_update = AvrFusionHilGpsPayload(
-                time_usec = int(time.time() * 1000000),
-                fix_type = int(self.config["hil_gps_constants"]["fix_type"]),  # 3 - 3D fix
-                lat = lat,
-                lon = lon,
-                alt = int(
-                        # self.message_cache["avr/fusion/geo"]["alt"] * 1000
-                        self.fusion_geo["alt"] * 1000
-                ),  # convert m to mm
-                eph = int(self.config["hil_gps_constants"]["eph"]),  # cm
-                epv = int(self.config["hil_gps_constants"]["epv"]),  # cm
-                vel = gs,
-                # vn = int(self.message_cache["avr/fusion/velocity/ned"]["Vn"]),
-                # ve = int(self.message_cache["avr/fusion/velocity/ned"]["Ve"]),
-                # vd = int(self.message_cache["avr/fusion/velocity/ned"]["Vd"]),
-                vn = int(self.fusion_vel_ned["Vn"]),
-                ve = int(self.fusion_vel_ned["Ve"]),
-                vd = int(self.fusion_vel_ned["Vd"]),
-                cog = int(crs * 100),
-                satellites_visible = int(
-                        self.config["hil_gps_constants"]["satellites_visible"]
-                ),
-                heading = heading,
-        )
-        # self.send_message("avr/fusion/hil_gps", hil_gps_update)
-        self.fcm.gps_fcc.hilgps_msg_handler(hil_gps_update)
+            # self.client.send_message("avr/fusion/hil_gps", hil_gps_update)
+            self.fcm.gps_fcc.hilgps_msg_handler(hil_gps_update)
+            time.sleep(1 / 10)
+            try:
+                self.running_barrier.wait(0)
+            except BrokenBarrierError:
+                pass
 
     @try_except(reraise = True)
     def on_apriltag_message(self, msg: AvrApriltagsSelectedPayload) -> None:
@@ -452,12 +468,11 @@ class FusionModule(MQTTModule):
                     heading = at_heading,
             )
             # noinspection PyTypeChecker
-            self.send_message("avr/vio/resync", resync)
+            self.client.send_message("avr/vio/resync", resync)
 
         self.last_apriltag = now
 
     def run(self) -> None:
-        self.run_non_blocking()
         # noinspection PyBroadException
         try:
             self.assemble_hil_gps_message()

@@ -13,17 +13,16 @@ class MQTTClient:
     _instance = None
 
     @classmethod
-    def get(cls, host: str = "localhost", port: int = 1883, retry: bool = True, status: Any = None) -> 'MQTTClient':
+    def get(cls, host: str = "localhost", port: int = 1883, status: Any = None) -> 'MQTTClient':
         if cls._instance is None:
-            cls._instance = MQTTClient(host, port, retry, status)
+            cls._instance = MQTTClient(host, port, status)
         return cls._instance
 
-    def __init__(self, host: str = "localhost", port: int = 1883, retry: bool = True, status: Any = None) -> None:
+    def __init__(self, host: str = "localhost", port: int = 1883, status: Any = None) -> None:
         self._instance = self
 
         self.host = host
         self.port = port
-        self.retry = retry
         self.status = status
 
         self.client = mqtt.Client(protocol = mqtt.MQTTv311)
@@ -70,13 +69,6 @@ class MQTTClient:
         logger.debug(f"Disconnected with result {rc}")
         if self.status is not None:
             self.status.update_status("mqtt", False)
-        if self.retry and rc is not mqtt.DISCONNECT:
-            Thread(target = self._reconnect_loop).start()
-
-    def _reconnect_loop(self) -> None:
-        while not self.is_connected:
-            self.connect()
-            time.sleep(2)
 
     # def _on_message(self, _: mqtt.Client, __: Any, msg: mqtt.MQTTMessage):
     #     if msg.topic in self.topic_map:

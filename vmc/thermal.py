@@ -57,7 +57,12 @@ class ThermalCamera:
 
         self.update_barrier = Barrier(2)
 
+        self.running = True
+
         Thread(target = self._update_loop, daemon = True).start()
+
+    def close(self) -> None:
+        self.running = False
 
     @property
     def pixels(self) -> np.ndarray:
@@ -135,7 +140,7 @@ class ThermalCamera:
             self.update_barrier.reset()
 
     def _update_loop(self) -> None:
-        while True:
+        while self.running:
             self.update_frame()
             self._stream()
             if TESTING:

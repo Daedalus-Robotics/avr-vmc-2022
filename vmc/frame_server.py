@@ -12,7 +12,7 @@ from loguru import logger
 from . import stream
 from .mqtt_client import MQTTClient
 
-socket.setdefaulttimeout(0.5)
+socket.setdefaulttimeout(1)
 MAX_MESSAGE_SIZE = 9000
 
 
@@ -89,14 +89,16 @@ class FrameServer:
 
     def _set_camera(self, payload: dict):
         index: int = payload.get("index", 0)
+        print("set")
         if index in self.cameras:
             self.set_camera(index)
+        else:
+            print("not in cams")
 
-    def set_camera(self, camera_type: CameraType | int, force: bool = False) -> None:
-        if force or self.is_auto:
-            if not isinstance(camera_type, int):
-                camera_type = camera_type.value
-            self.current_camera = camera_type
+    def set_camera(self, camera_type: CameraType | int) -> None:
+        if not isinstance(camera_type, int):
+            camera_type = camera_type.value
+        self.current_camera = camera_type
 
     def start(self) -> None:
         self.is_running = True
@@ -149,6 +151,7 @@ class FrameServer:
                             logger.debug("Ping was invalid")
                             break
                     else:
+                        do_break = False
                         for i in range(message_count):
                             start = i * MAX_MESSAGE_SIZE
                             if i == len(frame) - 1:
@@ -159,7 +162,10 @@ class FrameServer:
                             check_alive = self.server_socket.recv(4)
                             if not check_alive == b"ping":
                                 logger.debug("Ping was invalid")
+                                do_break = True
                                 break
+                        if do_break:
+                            break
                 except TimeoutError:
                     logger.debug("Socket timeout waiting for ping")
                     break

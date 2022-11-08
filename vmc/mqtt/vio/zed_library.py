@@ -1,8 +1,10 @@
 from typing import Optional, Tuple, TypedDict
 
+import numpy as np
 # Getting pyzed installed in a dev environment is very painful unless
 # you already have CUDA and the ZED SDK installed.
 import pyzed.sl as sl  # type: ignore
+import pyzed
 from bell.avr.utils.decorators import try_except
 from loguru import logger
 
@@ -30,13 +32,36 @@ class ZEDCamera(object):
     """
 
     def __init__(self) -> None:
-        self.zed = None
+        self.zed: sl.Camera | None = None
         self.tracking_parameters = None
         self.zed_pose = None
         self.zed_sensors = None
         self.last_pos = None
         self.runtime_parameters = None
         self.last_time = None
+        self.image_zed = None
+
+    @try_except(reraise = True)
+    def get_frames(self) -> tuple[bool, np.ndarray | None, np.ndarray | None, np.ndarray | None]:
+        if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
+            image_right: np.ndarray | None
+            image_left: np.ndarray | None
+            image_depth: np.ndarray | None
+
+            self.zed.retrieve_image(self.image_zed, sl.VIEW.RIGHT)
+            image_right = self.image_zed.get_data()
+            image_right = image_right.copy()
+
+            self.zed.retrieve_image(self.image_zed, sl.VIEW.LEFT)
+            image_left = self.image_zed.get_data()
+            image_left = image_left.copy()
+
+            self.zed.retrieve_image(self.image_zed, sl.VIEW.DEPTH)
+            image_depth = self.image_zed.get_data()
+            image_depth = image_depth.copy()
+
+            return True, image_right, image_left, image_depth
+        return False, None, None, None
 
     @try_except(reraise = True)
     def setup(self) -> None:
@@ -59,7 +84,7 @@ class ZEDCamera(object):
         if err != sl.ERROR_CODE.SUCCESS:
             logger.debug("Zed Camera Loading (FAILED!!!)")
             logger.debug(f"Zed Camera Error Code: {err}")
-            exit(1)
+            return
         logger.success("Zed Camera Loaded")
 
         # Enable positional tracking with default parameters
@@ -87,6 +112,12 @@ class ZEDCamera(object):
 
         self.runtime_parameters = sl.RuntimeParameters()
         self.last_time = 0
+
+        self.image_zed = sl.Mat(
+                # self.zed.get_camera_information().camera_resolution.width,
+                # self.zed.get_camera_information().camera_resolution.height,
+                # sl.MAT_TYPE.U8_C4
+        )
 
     @try_except(reraise = True)
     def get_pipe_data(self) -> Optional[ZedPipeData]:

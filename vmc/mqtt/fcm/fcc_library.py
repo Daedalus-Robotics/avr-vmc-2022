@@ -4,6 +4,7 @@ import json
 import math
 import queue
 import time
+from asyncio import Future
 from typing import Any, Callable, List
 
 import mavsdk
@@ -149,6 +150,13 @@ class FlightControlComputer(FCMMQTTModule):
         self.fcc_mode = "UNKNOWN"
         self.heading = 0.0
 
+        self.telemetry_tasks_future: Future | None = None
+
+    @try_except(reraise = False)
+    def close(self) -> None:
+        if self.telemetry_tasks_future is not None:
+            self.telemetry_tasks_future.cancel()
+
     @deprecated
     async def _connect(self) -> None:
         """
@@ -230,7 +238,7 @@ class FlightControlComputer(FCMMQTTModule):
         """
         Gathers the telemetry tasks
         """
-        return asyncio.gather(
+        f = asyncio.gather(
                 self.connected_status_telemetry(),
                 self.battery_telemetry(),
                 self.in_air_telemetry(),
@@ -244,6 +252,8 @@ class FlightControlComputer(FCMMQTTModule):
                 self.velocity_ned_telemetry(),
                 self.gps_info_telemetry(),
         )
+        self.telemetry_tasks_future = f
+        return f
 
     @async_try_except()
     async def connected_status_telemetry(self) -> None:

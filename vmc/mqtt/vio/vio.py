@@ -1,4 +1,6 @@
 import math
+import time
+from threading import Thread
 from typing import Tuple
 
 import numpy as np
@@ -13,14 +15,17 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
-from ..mqttmodule import MQTTModule
+from vmc.frame_server import CameraType, FrameServer
+from vmc.mqtt_client import MQTTClient
 from .vio_library import CameraCoordinateTransformation
 from .zed_library import ZEDCamera
 
 
-class VIOModule(MQTTModule):
-    def __init__(self) -> None:
-        super().__init__()
+class VIOModule:
+    def __init__(self, frame_server: FrameServer) -> None:
+        self.client = MQTTClient.get()
+
+        self.frame_server = frame_server
 
         # settings
         self.init_sync = False
@@ -32,7 +37,7 @@ class VIOModule(MQTTModule):
         self.coord_trans = CameraCoordinateTransformation()
 
         # mqtt
-        self.topic_map = {"avr/vio/resync": self.handle_resync}
+        self.client.register_callback("avr/vio/resync", self.handle_resync)
 
         self.position_ned = None
         self.orientation_eul = None
@@ -45,6 +50,11 @@ class VIOModule(MQTTModule):
         self.vio_heading_func = lambda thing: None
         self.velocity_ned_func = lambda thing: None
         self.vio_confidence_func = lambda thing: None
+
+        self.running = False
+
+    def close(self) -> None:
+        self.running = False
 
     def handle_resync(self, payload: AvrVioResyncPayload) -> None:
         # whenever new data is published to the ZEDCamera resync topic, we need to compute a new correction
@@ -119,40 +129,52 @@ class VIOModule(MQTTModule):
         self.vio_confidence = confidence_update
         self.vio_confidence_func(self.vio_confidence)
 
-    @run_forever(frequency = 10)
     @try_except(reraise = False)
     def process_camera_data(self) -> None:
-        data = self.camera.get_pipe_data()
+        while self.running:
+            data = self.camera.get_pipe_data()
 
-        if data is None:
-            logger.debug("Waiting on camera data")
-            return
+            if data is None:
+                logger.debug("Waiting on camera data")
+                return
 
-        # collect data from the sensor and transform it into "global" NED frame
-        (
-            ned_pos,
-            ned_vel,
-            rpy,
-        ) = self.coord_trans.transform_trackcamera_to_global_ned(data)
+            # collect data from the sensor and transform it into "global" NED frame
+            ned_pos, ned_vel, rpy, = self.coord_trans.transform_trackcamera_to_global_ned(data)
 
-        self.publish_updates(
-                ned_pos,
-                ned_vel,
-                rpy,
-                data["tracker_confidence"],
-        )
+            self.publish_updates(
+                    ned_pos,
+                    ned_vel,
+                    rpy,
+                    data["tracker_confidence"],
+            )
+            time.sleep(1 / 10)
+
+    @try_except(reraise = False)
+    def update_frames(self) -> None:
+        while self.running:
+            success, right, left, depth = self.camera.get_frames()
+            if success:
+                self.frame_server.update_frame(right, CameraType.ZED_RIGHT, 60, 480)
+                self.frame_server.update_frame(left, CameraType.ZED_LEFT, 60, 480)
+                self.frame_server.update_frame(depth, CameraType.ZED_DEPTH, 60, 480)
+            time.sleep(1 / 10)
 
     def run(self) -> None:
-        self.run_non_blocking()
+        self.running = True
 
         # set up the tracking camera
         logger.debug("Setting up camera connection")
         self.camera.setup()
 
         # begin processing data
-        self.process_camera_data()
+        Thread(target = self.update_frames, daemon = True).start()
+        Thread(target = self.process_camera_data, daemon = True).start()
 
 
 if __name__ == "__main__":
-    vio = VIOModule()
+    f = FrameServer()
+    f.start()
+    vio = VIOModule(f)
     vio.run()
+    while True:
+        pass

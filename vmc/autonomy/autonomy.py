@@ -30,6 +30,9 @@ class Autonomy:
 
         self.gimbal: Gimbal | None = None
 
+    def close(self) -> None:
+        self.gimbal.close()
+
     async def run(self) -> None:
         self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
         Thread(target = lambda: self.gimbal.run(), daemon = True).start()

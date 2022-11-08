@@ -28,7 +28,7 @@ logger.level("SETUP", no = 50, color = "<magenta><bold><italic>", icon = "⚙️
 main_thread: Thread | None = None
 # status_thread: Thread | None = None
 
-mqtt_client = MQTTClient.get("localhost", 1883, True)
+mqtt_client = MQTTClient.get("localhost", 1883)
 status_strip = StatusStrip(8)
 status = Status(status_strip)
 status.register_status("mqtt", False, None, led_num = 0)
@@ -61,19 +61,49 @@ def set_armed(state: bool | dict):
 
 @atexit.register
 def stop() -> None:
-    pcc.color_wipe(10)
-    pcc.end()
-    status.update_status("pcc", False)
+    if autonomy is not None:
+        logger.log("SETUP", "Stopping autonomy...")
+        autonomy.close()
 
-    mavp2p.stop()
-    status.update_status("mavp2p", False)
+    if thermal is not None:
+        logger.log("SETUP", "Stopping thermal camera...")
+        thermal.close()
 
-    pymavlink_connection.close()
-    status.update_status("fcc", False)
+    if pcc is not None:
+        logger.log("SETUP", "Stopping pcc...")
+        pcc.color_wipe(10)
+        pcc.end()
+        status.update_status("pcc", False)
+
+    if apriltag is not None:
+        logger.log("SETUP", "Stopping apriltag...")
+        apriltag.close()
+
+    if fusion is not None:
+        logger.log("SETUP", "Stopping fusion...")
+        fusion.close()
+
+    if vio is not None:
+        logger.log("SETUP", "Stopping vio...")
+        vio.close()
+
+    if fcm is not None:
+        logger.log("SETUP", "Stopping fcm...")
+        fcm.fcc.close()
+        fcm.gps_fcc.shutdown()
+
+    if mavp2p is not None:
+        mavp2p.stop()
+        status.update_status("mavp2p", False)
+
+    if pymavlink_connection is not None:
+        logger.log("SETUP", "Stopping pymavlink...")
+        pymavlink_connection.close()
+        status.update_status("fcc", False)
 
     status.update_status("vmc", False)
     mqtt_client.disconnect()
-
+    logger.log("SETUP", "Done stopping!")
 
 def restart_vmc() -> None:
     logger.info("Restarting vmc...")
@@ -121,6 +151,9 @@ async def main(start_modules: list[str]) -> None:
         pcc.begin()
         pcc.begin_mqtt()
 
+        # ToDo: move this to a reasonable spot
+        pcc.set_servo_max(1, 1000)
+
     if ("mavsdk" in start_modules) or ("mavutil" in start_modules):
         logger.log("SETUP", "Setting up mavP2P...")
         mavp2p = Service("mavp2p.service")
@@ -136,17 +169,19 @@ async def main(start_modules: list[str]) -> None:
         logger.log("SETUP", "Starting thermal camera...")
         thermal = ThermalCamera()
 
-    # No purpose without the csi cam working or the zed cam streaming
-    # frame_server = FrameServer()
-    # frame_server.start()
+    if ("vio" in start_modules) or ("apriltag" in start_modules):
+        logger.log("SETUP", "Setting up frame server...")
+        frame_server = FrameServer()
+
+        logger.log("SETUP", "Starting frame server...")
+        frame_server.start()
 
     if "vio" in start_modules:
         logger.log("SETUP", "Setting up vio...")
-        vio = VIOModule()
+        vio = VIOModule(frame_server)
 
-        # ToDo: Make this less horrible
         logger.log("SETUP", "Starting vio...")
-        Thread(target = vio.run, daemon = False).start()
+        vio.run()
 
     if "mavsdk" in start_modules:
         logger.log("SETUP", "Setting up connection to mavP2P using mavsdk...")
@@ -172,19 +207,15 @@ async def main(start_modules: list[str]) -> None:
         logger.log("SETUP", "Setting up fusion...")
         fusion = FusionModule(vio, fcm)
 
-        # ToDo: Make this less horrible
         logger.log("SETUP", "Starting fusion...")
-        Thread(target = fusion.run, daemon = False).start()
+        Thread(target = fusion.run, daemon = True).start()
 
     if "apriltag" in start_modules:
         logger.log("SETUP", "Setting up apriltag...")
         apriltag = AprilTagModule()
 
         logger.log("SETUP", "Starting apriltag...")
-        Thread(target = apriltag.run, daemon = False).start()
-
-    # ToDo: move this to a reasonable spot
-    pcc.set_servo_max(1, 1000)
+        Thread(target = apriltag.run, daemon = True).start()
 
     if "autonomy" in start_modules:
         logger.log("SETUP", "Setting up autonomy...")
