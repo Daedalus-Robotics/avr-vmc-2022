@@ -1,0 +1,108 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/avr/AVR-2022/VMC/apriltag/c/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_26de1/fast"
+/usr/bin/make -f CMakeFiles/cmTC_26de1.dir/build.make CMakeFiles/cmTC_26de1.dir/build
+make[1]: Entering directory '/home/avr/AVR-2022/VMC/apriltag/c/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_26de1.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_26de1.dir/CheckSymbolExists.c.o   -c /home/avr/AVR-2022/VMC/apriltag/c/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_26de1
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_26de1.dir/link.txt --verbose=1
+/usr/bin/cc      -rdynamic CMakeFiles/cmTC_26de1.dir/CheckSymbolExists.c.o  -o cmTC_26de1 
+CMakeFiles/cmTC_26de1.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x14): undefined reference to `pthread_create'
+CheckSymbolExists.c:(.text+0x18): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_26de1.dir/build.make:97: recipe for target 'cmTC_26de1' failed
+make[1]: *** [cmTC_26de1] Error 1
+make[1]: Leaving directory '/home/avr/AVR-2022/VMC/apriltag/c/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_26de1/fast' failed
+make: *** [cmTC_26de1/fast] Error 2
+
+File /home/avr/AVR-2022/VMC/apriltag/c/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_b6db6/fast"
+/usr/bin/make -f CMakeFiles/cmTC_b6db6.dir/build.make CMakeFiles/cmTC_b6db6.dir/build
+make[1]: Entering directory '/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_b6db6.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_b6db6.dir/CheckSymbolExists.c.o   -c /home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_b6db6
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b6db6.dir/link.txt --verbose=1
+/usr/bin/cc      -rdynamic CMakeFiles/cmTC_b6db6.dir/CheckSymbolExists.c.o  -o cmTC_b6db6 
+CMakeFiles/cmTC_b6db6.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x14): undefined reference to `pthread_create'
+CheckSymbolExists.c:(.text+0x18): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_b6db6.dir/build.make:97: recipe for target 'cmTC_b6db6' failed
+make[1]: *** [cmTC_b6db6] Error 1
+make[1]: Leaving directory '/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_b6db6/fast' failed
+make: *** [cmTC_b6db6/fast] Error 2
+
+File /home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_948af/fast"
+/usr/bin/make -f CMakeFiles/cmTC_948af.dir/build.make CMakeFiles/cmTC_948af.dir/build
+make[1]: Entering directory '/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_948af.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_948af.dir/CheckSymbolExists.c.o   -c /home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_948af
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_948af.dir/link.txt --verbose=1
+/usr/bin/cc      -rdynamic CMakeFiles/cmTC_948af.dir/CheckSymbolExists.c.o  -o cmTC_948af 
+CMakeFiles/cmTC_948af.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x14): undefined reference to `pthread_create'
+CheckSymbolExists.c:(.text+0x18): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_948af.dir/build.make:97: recipe for target 'cmTC_948af' failed
+make[1]: *** [cmTC_948af] Error 1
+make[1]: Leaving directory '/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_948af/fast' failed
+make: *** [cmTC_948af/fast] Error 2
+
+File /home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+

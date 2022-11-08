@@ -1,0 +1,5 @@
+/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/rebuild_cache.dir
+/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/avrapriltags.dir
+/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/CMakeFiles/edit_cache.dir
+/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/libraries/json/CMakeFiles/rebuild_cache.dir
+/home/avr/vmc/avr-vmc-2022/vmc/apriltag/c/libraries/json/CMakeFiles/edit_cache.dir

@@ -1,0 +1,36 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/avr/AVR-2022/VMC/apriltag/c/libraries/paho.mqtt.cpp/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_7998c/fast"
+/usr/bin/make -f CMakeFiles/cmTC_7998c.dir/build.make CMakeFiles/cmTC_7998c.dir/build
+make[1]: Entering directory '/home/avr/AVR-2022/VMC/apriltag/c/libraries/paho.mqtt.cpp/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_7998c.dir/CheckSymbolExists.cxx.o
+/usr/bin/c++    -fPIE   -o CMakeFiles/cmTC_7998c.dir/CheckSymbolExists.cxx.o -c /home/avr/AVR-2022/VMC/apriltag/c/libraries/paho.mqtt.cpp/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx
+Linking CXX executable cmTC_7998c
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7998c.dir/link.txt --verbose=1
+/usr/bin/c++       CMakeFiles/cmTC_7998c.dir/CheckSymbolExists.cxx.o  -o cmTC_7998c 
+CMakeFiles/cmTC_7998c.dir/CheckSymbolExists.cxx.o: In function `main':
+CheckSymbolExists.cxx:(.text+0x14): undefined reference to `pthread_create'
+CheckSymbolExists.cxx:(.text+0x18): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_7998c.dir/build.make:97: recipe for target 'cmTC_7998c' failed
+make[1]: *** [cmTC_7998c] Error 1
+make[1]: Leaving directory '/home/avr/AVR-2022/VMC/apriltag/c/libraries/paho.mqtt.cpp/build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_7998c/fast' failed
+make: *** [cmTC_7998c/fast] Error 2
+
+File /home/avr/AVR-2022/VMC/apriltag/c/libraries/paho.mqtt.cpp/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
