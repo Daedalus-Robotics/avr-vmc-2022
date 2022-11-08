@@ -1,6 +1,6 @@
 import json
 import time
-from threading import Thread
+from threading import Lock, Thread
 from typing import Any, Callable
 
 from loguru import logger
@@ -32,6 +32,7 @@ class MQTTClient:
         self.client.on_message = self._on_message
 
         self.topic_map: dict[str, tuple[Callable, bool, int, Any, Any, bool]] = {}
+        self.topic_map_lock = Lock()
         self._connected = False
 
         self._last_flash = 0
@@ -142,11 +143,12 @@ class MQTTClient:
     ) -> bool:
         return_val = False
         if topic not in self.topic_map:
-            self.topic_map[topic] = (callback, is_json, qos, options, properties, use_args)
-            return_val = True
-            if self._connected:
-                self.client.subscribe(topic, qos = qos, options = options, properties = properties)
-                logger.success(f"Subscribed to: {topic}")
+            with self.topic_map_lock:
+                self.topic_map[topic] = (callback, is_json, qos, options, properties, use_args)
+                return_val = True
+                if self._connected:
+                    self.client.subscribe(topic, qos = qos, options = options, properties = properties)
+                    logger.success(f"Subscribed to: {topic}")
         return return_val
 
     def register_topic_map(self, topic_map: dict):
