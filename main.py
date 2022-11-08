@@ -95,6 +95,8 @@ async def main(start_modules: list[str]) -> None:
     global mavp2p
     global mavlink_system, pymavlink_connection
     global autonomy
+
+    status.register_status("vmc", True, restart_vmc)
     mqtt_client.register_callback(
             "avr/shutdown",
             lambda: asyncio.run(shutdown_vmc()),
@@ -102,35 +104,48 @@ async def main(start_modules: list[str]) -> None:
             use_args = False
     )
 
-    pcc = PeripheralControlComputer()
-    status.register_status("pcc", pcc.is_connected, pcc.reset, 1)
-    pcc.on_state = lambda state: status.update_status("pcc", state)
-    pcc.begin()
-    pcc.begin_mqtt()
+    if "pcc" in start_modules:
+        logger.log("SETUP", "Setting up pcc...")
+        pcc = PeripheralControlComputer()
+        status.register_status("pcc", pcc.is_connected, pcc.reset, 1)
+        pcc.on_state = lambda state: status.update_status("pcc", state)
 
-    if TESTING:
-        status.register_status("mavp2p", True, lambda: None)
-    else:
+        logger.log("SETUP", "Starting pcc...")
+        pcc.begin()
+        pcc.begin_mqtt()
+
+    if ("mavsdk" in start_modules) or ("mavutil" in start_modules):
+        logger.log("SETUP", "Setting up mavP2P...")
         mavp2p = Service("mavp2p.service")
         status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart, 2)
         mavp2p.on_state = lambda state: status.update_status("mavp2p", state)
-
-        if not (mavp2p.state == ServiceState.ACTIVE):
+        mavp2p_state = mavp2p.state
+        logger.debug("MavP2P state: " + mavp2p_state.name)
+        if not (mavp2p_state == ServiceState.ACTIVE):
+            logger.log("SETUP", "MavP2P service is not active. Starting...")
             mavp2p.start()
 
-    status.register_status("vmc", True, restart_vmc)
-
-    thermal = ThermalCamera()
+    if "thermal" in start_modules:
+        logger.log("SETUP", "Starting thermal camera...")
+        thermal = ThermalCamera()
 
     # No purpose without the csi cam working or the zed cam streaming
     # frame_server = FrameServer()
     # frame_server.start()
 
-    if not TESTING:
+    if "vio" in start_modules:
+        logger.log("SETUP", "Setting up vio...")
         vio = VIOModule()
+
+        # ToDo: Make this less horrible
+        logger.log("SETUP", "Starting vio...")
         Thread(target = vio.run, daemon = True).start()
 
+    if "mavsdk" in start_modules:
+        logger.log("SETUP", "Setting up connection to mavP2P using mavsdk...")
         mavlink_system = mavsdk.System(sysid = 141)
+    if "mavutil" in start_modules:
+        logger.log("SETUP", "Setting up connection to mavP2P using mavutil...")
         pymavlink_connection = mavutil.mavlink_connection(
                 "udpin:0.0.0.0:14542",
                 source_system = 142,
@@ -138,23 +153,36 @@ async def main(start_modules: list[str]) -> None:
         )
         mqtt_client.register_callback("avr/arm", set_armed, is_json = True, use_args = True, qos = 2)
 
+    if "fcm" in start_modules:
+        logger.log("SETUP", "Setting up fcm...")
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
         status.register_status("fcc", False, fcm.gps_fcc.reboot, 3)
+
+        logger.log("SETUP", "Starting fcm...")
         await fcm.run()
 
+    if "fusion" in start_modules:
+        logger.log("SETUP", "Setting up fusion...")
         fusion = FusionModule(vio, fcm)
+
+        # ToDo: Make this less horrible
+        logger.log("SETUP", "Starting fusion...")
         Thread(target = fusion.run).start()
 
     # ToDo: move this to a reasonable spot
     pcc.set_servo_max(1, 1000)
 
-    autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
-
-    await autonomy.run()
-
     mqtt_client.connect()
     status.send_update()
 
+    if "autonomy" in start_modules:
+        logger.log("SETUP", "Setting up autonomy...")
+        autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
+
+        logger.log("SETUP", "Starting autonomy...")
+        await autonomy.run()
+
+    logger.log("SETUP", "Setup Done!")
     await asyncio.Future()
 
 
