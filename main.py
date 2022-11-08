@@ -1,5 +1,7 @@
+import argparse
 import asyncio
 import atexit
+import os
 import subprocess
 import time
 from threading import Thread
@@ -75,7 +77,7 @@ async def shutdown_vmc() -> None:
     await asyncio.Future()
 
 
-async def main() -> None:
+async def main(start_modules: list[str]) -> None:
     global mqtt_client, status
     global pcc, thermal, frame_server, vio, fcm, fusion
     global mavp2p
@@ -154,9 +156,95 @@ async def main() -> None:
 
 
 if __name__ == '__main__':
-    main_thread = Thread(target = lambda: asyncio.run(main()), daemon = False)
+    parser = argparse.ArgumentParser(
+            epilog = "If none of these are set, the program will run everything."
+    )
+    parser.add_argument(
+            "--pcc",
+            action = "store_true",
+            default = False,
+            help = "Connect to the pcc"
+    )
+    parser.add_argument(
+            "--thermal",
+            action = "store_true",
+            default = False,
+            help = "Stream the thermal camera"
+    )
+    parser.add_argument(
+            "--mavsdk",
+            "--mavlink",
+            action = "store_true",
+            default = False,
+            help = "Connect to mavp2p using mavsdk (async)"
+    )
+    parser.add_argument(
+            "--mavutil",
+            "--pymavlink",
+            action = "store_true",
+            default = False,
+            help = "Connect to mavp2p using mavutil in pymavlink"
+    )
+    parser.add_argument(
+            "--fcm",
+            action = "store_true",
+            default = False,
+            help = "Stream telemetry data and update local position. Requires both mavsdk and mavutil"
+    )
+    parser.add_argument(
+            "--vio",
+            "--zed",
+            action = "store_true",
+            default = False,
+            help = "Start the zed camera"
+    )
+    parser.add_argument(
+            "--fusion",
+            "--fuse",
+            action = "store_true",
+            default = False,
+            help = "Stream the local position of the avr drone. Requires fcm and vio"
+    )
+    parser.add_argument(
+            "-a",
+            "--autonomy",
+            action = "store_true",
+            default = False,
+            help = "Start autonomy. Requires all other modules"
+    )
+    parser.add_argument(
+            "-i",
+            "--interpreter",
+            action = "store_true",
+            default = False,
+            help = "Use this if you are running in an interpreter"
+    )
+    args = vars(parser.parse_args())
+    is_interpreter = args.pop("interpreter") if "interpreter" in args else False
+    is_interpreter = is_interpreter or bool(int(os.environ.get("IS_INTERPRETER", "0")))
+    if not (True in args.values()) or args.get("autonomy", False):
+        for k in args:
+            args[k] = True
+    if args.get("fusion", False):
+        if "fcm" in args:
+            args["fcm"] = True
+        if "vio" in args:
+            args["vio"] = True
+    if args.get("fcm", False):
+        if "mavsdk" in args:
+            args["mavsdk"] = True
+        if "mavutil" in args:
+            args["mavutil"] = True
+    start_items = []
+    for name, start in args.items():
+        if start:
+            start_items.append(name)
+
+    main_thread = Thread(target = lambda: asyncio.run(main(start_items)), daemon = True)
     # status_thread = Thread(target = ensure_running, daemon = True)
     main_thread.start()
     # status_thread.start()
-    while True:
-        pass
+
+    if not is_interpreter:
+        while True:
+            pass
