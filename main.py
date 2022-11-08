@@ -6,6 +6,7 @@ from threading import Thread
 
 import mavsdk
 from loguru import logger
+from pymavlink import mavutil
 from systemctl import Service, ServiceState
 
 from vmc.autonomy.autonomy import Autonomy
