@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Callable
 
 from vmc.mqtt_client import MQTTClient
 from vmc.status_led import StatusLed, StatusStrip
@@ -47,6 +47,10 @@ class Status:
             if name in self.status_leds:
                 self.status_leds[name].set_color(RUNNING_COLOR if value else STOPPED_COLOR)
             self.send_update()
+
+    def led_event(self, name: str, color: tuple[int, int, int], timeout: int):
+        if name in self.status_leds:
+            self.status_leds[name].flash_color(color, timeout)
 
     def send_update(self) -> None:
         self.client.send_message("avr/status/update", self.statuses, qos = 2)

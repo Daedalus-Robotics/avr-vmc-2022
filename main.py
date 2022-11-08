@@ -18,38 +18,27 @@ from vmc.status import Status
 from vmc.status_led import StatusStrip
 from vmc.thermal import ThermalCamera
 
-if (len(sys.argv) > 1) and (sys.argv[1] == "test"):
-    TESTING = True
-else:
-    detector = Detector()
-    TESTING = not (detector.board.any_jetson_board or detector.board.any_raspberry_pi)
-
-if TESTING:
-    logger.info("Running in test mode")
-else:
-    from pymavlink import mavutil
-    from vmc.mqtt.fcm.fcm import FlightControlModule
-    from vmc.mqtt.fusion import FusionModule
-    from vmc.mqtt.vio.vio import VIOModule
+logger.level("SETUP", no = 50, color = "<magenta><bold><italic>", icon = "⚙️")
 
 main_thread: Thread | None = None
-status_thread: Thread | None = None
+# status_thread: Thread | None = None
 
 mqtt_client = MQTTClient.get("localhost", 1883, True)
 status_strip = StatusStrip(8)
 status = Status(status_strip)
+status.register_status("mqtt", False, None, led_num = 0)
+mqtt_client.status = status
 
 pcc: PeripheralControlComputer | None = None
 thermal: ThermalCamera | None = None
 frame_server: FrameServer | None = None
-if not TESTING:
-    vio: VIOModule | None = None
-    fcm: FlightControlModule | None = None
-    fusion: FusionModule | None = None
-    mavp2p: Service | None = None
-    mavlink_system: mavsdk.System | None = None
-    pymavlink_connection: mavutil.mavudp | None = None
-    autonomy: Autonomy | None = None
+vio: VIOModule | None = None
+fcm: FlightControlModule | None = None
+fusion: FusionModule | None = None
+mavp2p: Service | None = None
+mavlink_system: mavsdk.System | None = None
+pymavlink_connection: mavutil.mavudp | None = None
+autonomy: Autonomy | None = None
 
 
 @atexit.register
@@ -58,31 +47,30 @@ def stop() -> None:
     pcc.end()
     status.update_status("pcc", False)
 
-    if not TESTING:
-        mavp2p.stop()
+    mavp2p.stop()
     status.update_status("mavp2p", False)
 
-    if not TESTING:
-        fcm.gps_fcc.shutdown()
-        pymavlink_connection.close()
-        status.update_status("fcc", False)
+    pymavlink_connection.close()
+    status.update_status("fcc", False)
 
     status.update_status("vmc", False)
     mqtt_client.disconnect()
 
 
 def restart_vmc() -> None:
+    logger.info("Restarting vmc...")
     stop()
     time.sleep(2)
     subprocess.Popen(["sudo", "reboot"])
 
 
 async def shutdown_vmc() -> None:
-    if not TESTING:
-        stop()
-        time.sleep(2)
-        subprocess.Popen(["sudo", "shutdown", "now"])
-        await asyncio.Future()
+    logger.info("Shutting down vmc...")
+    fcm.gps_fcc.shutdown()
+    stop()
+    time.sleep(2)
+    subprocess.Popen(["sudo", "shutdown", "now"])
+    await asyncio.Future()
 
 
 async def main() -> None:
