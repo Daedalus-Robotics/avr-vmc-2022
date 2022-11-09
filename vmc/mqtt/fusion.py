@@ -101,7 +101,7 @@ class FusionModule:
         self.deriv = [0, 0, 0]
         self.last_apriltag = time.time()
 
-        self.running = False
+        self.running = True
         self.running_barrier = Barrier(2)
 
     def close(self) -> None:
@@ -320,7 +320,7 @@ class FusionModule:
             # if "avr/fusion/geo" not in self.message_cache:
             if self.fusion_geo is None:
                 logger.debug("Waiting for avr/fusion/geo to be populated")
-                return
+                continue
 
             # geodetic = self.message_cache["avr/fusion/geo"]
             geodetic = self.fusion_geo
@@ -330,16 +330,16 @@ class FusionModule:
             # if lat / lon is 0, that means the ned -> lla conversion hasn't run yet,
             # don't send that data to FCC
             if lat == 0 or lon == 0:
-                return
+                continue
 
             # if "avr/fusion/velocity/ned" not in self.message_cache:
             if self.fusion_vel_ned is None:
                 logger.debug("Waiting for avr/fusion/velocity/ned to be populated")
-                return
+                continue
             # elif self.message_cache["avr/fusion/velocity/ned"]["Vn"] is None:
             elif self.fusion_vel_ned["Vn"] is None:
                 logger.debug("avr/fusion/velocity/ned/vn message cache is empty")
-                return
+                continue
 
             crs = 0
             # if "avr/fusion/course" in self.message_cache:
@@ -350,7 +350,7 @@ class FusionModule:
                     crs = int(self.fusion_course["course"])
             else:
                 logger.debug("Waiting for avr/fusion/course message to be populated")
-                return
+                continue
 
             gs = 0
             # if "avr/fusion/groundspeed" in self.message_cache:
@@ -361,7 +361,7 @@ class FusionModule:
                     gs = int(self.fusion_groundspeed["groundspeed"])
             else:
                 logger.debug("avr/fusion/groundspeed message cache is empty")
-                return
+                continue
 
             # if "avr/fusion/attitude/heading" in self.message_cache:
             if self.fusion_attitude_heading is not None:
@@ -371,7 +371,7 @@ class FusionModule:
                 )
             else:
                 logger.debug("Waiting for avr/fusion/attitude/heading to be populated")
-                return
+                continue
 
             hil_gps_update = AvrFusionHilGpsPayload(
                     time_usec = int(time.time() * 1000000),
