@@ -77,14 +77,14 @@ class PeripheralControlComputer:
         self.port_thread: Thread | None = None
 
     def begin(self) -> None:
-        if self.shutdown:
-            self.shutdown = False
+        self.shutdown = False
+        if not (self.port_thread is not None and self.port_thread.is_alive()):
             self.port_thread = Thread(target = self._port_loop, daemon = True)
             self.port_thread.start()
 
     def end(self) -> None:
-        if self.shutdown:
-            self.shutdown = True
+        self.shutdown = True
+        if self.port_thread is not None and self.port_thread.is_alive():
             self.port_thread.join(5)
         self.dev.close()
 
@@ -126,8 +126,6 @@ class PeripheralControlComputer:
                     logger.warning("Cant connect to the PCC")
                 previously_connected = connected
                 first_connection = False
-            if self.shutdown:
-                break
             time.sleep(1)
 
     def _send(self, data: bytes, enable_queueing: bool = True) -> bool:
