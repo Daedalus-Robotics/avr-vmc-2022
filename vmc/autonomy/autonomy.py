@@ -1,5 +1,4 @@
-import asyncio
-from threading import Thread
+from threading import Barrier, BrokenBarrierError, Thread
 
 import mavsdk
 from pymavlink import mavutil
@@ -8,6 +7,7 @@ from pyzed import sl
 from .gimbal import Gimbal
 from ..mqtt_client import MQTTClient
 from ..pcc import PeripheralControlComputer
+from ..status import Status
 from ..thermal import ThermalCamera
 
 
@@ -15,6 +15,7 @@ class Autonomy:
     def __init__(
             self,
             mqtt_client: MQTTClient,
+            status: Status,
             pcc: PeripheralControlComputer,
             thermal: ThermalCamera,
             zed_camera: sl.Camera,
@@ -22,17 +23,37 @@ class Autonomy:
             mavutil_connection: mavutil.mavudp
     ) -> None:
         self.mqtt_client = mqtt_client
+        self.status = status
         self.pcc = pcc
         self.thermal = thermal
         self.zed_camera = zed_camera
         self.mavlink_system = mavlink_system
         self.mavutil_connection = mavutil_connection
 
-        self.gimbal: Gimbal | None = None
+        self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
+        self.gimbal_thread = Thread(target = lambda: self.gimbal.run(), daemon = True)
+
+        self.running = False
+        self.running_barrier = Barrier(2)
+
+        Thread(target = self._status_loop, daemon = True).start()
+
+    def _status_loop(self) -> None:
+        self.status.update_status("autonomy", False)
+        while self.running:
+            self.status.update_status("autonomy", False not in (self.gimbal_thread.is_alive()))
+        self.status.update_status("autonomy", False)
+        try:
+            self.running_barrier.wait(0)
+        except BrokenBarrierError:
+            pass
 
     def close(self) -> None:
         self.gimbal.close()
+        try:
+            self.running_barrier.wait(2)
+        except BrokenBarrierError:
+            pass
 
     async def run(self) -> None:
-        self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
-        Thread(target = lambda: self.gimbal.run(), daemon = True).start()
+        self.gimbal_thread.start()
