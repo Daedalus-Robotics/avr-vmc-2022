@@ -2,7 +2,7 @@ from threading import Barrier, BrokenBarrierError
 
 from loguru import logger
 
-from vmc.mqtt_client import MQTTClient
+from ..mqtt_client import MQTTClient
 
 
 class WaterDrop:
