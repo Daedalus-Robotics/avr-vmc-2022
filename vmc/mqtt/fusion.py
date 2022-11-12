@@ -26,8 +26,8 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
-from vmc.mqtt_client import MQTTClient
-from vmc.status import Status
+from ..mqtt_client import MQTTClient
+from ..status import Status
 from .fcm.fcm import FlightControlModule
 from .vio.vio import VIOModule
 
