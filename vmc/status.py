@@ -41,12 +41,24 @@ class Status:
                 self.status_leds[name] = self.status_strip.get_status_led(led_num)
                 self.status_leds[name].set_color(RUNNING_COLOR if initial_value else STOPPED_COLOR)
 
+    def add_restart_callback(self,
+                             name: str,
+                             restart_callback: Callable):
+        if name in self.statuses:
+            self.client.register_callback(
+                    f"avr/status/restart/{name}",
+                    restart_callback,
+                    is_json = False,
+                    use_args = False
+            )
+
     def update_status(self, name: str, value: bool) -> None:
         if name in self.statuses:
-            self.statuses[name] = value
-            if name in self.status_leds:
-                self.status_leds[name].set_color(RUNNING_COLOR if value else STOPPED_COLOR)
-            self.send_update()
+            if value is not self.statuses[name]:
+                self.statuses[name] = value
+                if name in self.status_leds:
+                    self.status_leds[name].set_color(RUNNING_COLOR if value else STOPPED_COLOR)
+                self.send_update()
 
     def led_event(self, name: str, color: tuple[int, int, int], timeout: float):
         if name in self.status_leds:

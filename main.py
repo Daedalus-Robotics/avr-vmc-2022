@@ -90,16 +90,15 @@ def stop() -> None:
     if fcm is not None:
         logger.log("SETUP", "Stopping fcm...")
         fcm.fcc.close()
-        fcm.gps_fcc.shutdown()
-
-    if mavp2p is not None:
-        mavp2p.stop()
-        status.update_status("mavp2p", False)
 
     if pymavlink_connection is not None:
         logger.log("SETUP", "Stopping pymavlink...")
         pymavlink_connection.close()
         status.update_status("fcc", False)
+
+    if mavp2p is not None:
+        mavp2p.stop()
+        status.update_status("mavp2p", False)
 
     status.update_status("vmc", False)
     mqtt_client.disconnect()
@@ -109,14 +108,17 @@ def stop() -> None:
 def restart_vmc() -> None:
     logger.info("Restarting vmc...")
     stop()
+    if fcm is not None:
+        fcm.gps_fcc.shutdown()
     time.sleep(2)
     subprocess.Popen(["sudo", "reboot"])
 
 
 async def shutdown_vmc() -> None:
     logger.info("Shutting down vmc...")
-    fcm.gps_fcc.shutdown()
     stop()
+    if fcm is not None:
+        fcm.gps_fcc.shutdown()
     time.sleep(2)
     subprocess.Popen(["sudo", "shutdown", "now"])
     await asyncio.Future()
@@ -177,13 +179,6 @@ async def main(start_modules: list[str]) -> None:
         logger.log("SETUP", "Starting frame server...")
         frame_server.start()
 
-    if "vio" in start_modules:
-        logger.log("SETUP", "Setting up vio...")
-        vio = VIOModule(frame_server)
-
-        logger.log("SETUP", "Starting vio...")
-        vio.run()
-
     if "mavsdk" in start_modules:
         logger.log("SETUP", "Setting up connection to mavP2P using mavsdk...")
         mavlink_system = mavsdk.System(sysid = 141)
@@ -198,22 +193,32 @@ async def main(start_modules: list[str]) -> None:
 
     if "fcm" in start_modules:
         logger.log("SETUP", "Setting up fcm...")
+        status.register_status("fcc", False, None, 3)
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
-        status.register_status("fcc", False, fcm.gps_fcc.reboot, 3)
+        status.add_restart_callback("fcc", fcm.gps_fcc.reboot)
 
         logger.log("SETUP", "Starting fcm...")
         await fcm.run()
 
+    if "vio" in start_modules:
+        logger.log("SETUP", "Setting up vio...")
+        status.register_status("vio", False, None, 4)
+        vio = VIOModule(status, frame_server)
+
+        logger.log("SETUP", "Starting vio...")
+        vio.run()
+
     if "fusion" in start_modules:
         logger.log("SETUP", "Setting up fusion...")
-        fusion = FusionModule(vio, fcm)
+        status.register_status("fusion", False, None, 5)
+        fusion = FusionModule(status, vio, fcm)
 
         logger.log("SETUP", "Starting fusion...")
         Thread(target = fusion.run, daemon = True).start()
 
     if "apriltag" in start_modules:
         logger.log("SETUP", "Setting up apriltag...")
-        status.register_status("apriltag", False, None, 4)
+        status.register_status("apriltag", False, None, 6)
         apriltag = AprilTagModule(status)
 
         logger.log("SETUP", "Starting apriltag...")
@@ -221,7 +226,8 @@ async def main(start_modules: list[str]) -> None:
 
     if "autonomy" in start_modules:
         logger.log("SETUP", "Setting up autonomy...")
-        autonomy = Autonomy(mqtt_client, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
+        status.register_status("autonomy", False, None, 7)
+        autonomy = Autonomy(mqtt_client, status, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
 
         logger.log("SETUP", "Starting autonomy...")
         await autonomy.run()

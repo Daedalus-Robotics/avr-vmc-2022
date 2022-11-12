@@ -17,14 +17,16 @@ from loguru import logger
 
 from vmc.frame_server import CameraType, FrameServer
 from vmc.mqtt_client import MQTTClient
+from vmc.status import Status
 from .vio_library import CameraCoordinateTransformation
 from .zed_library import ZEDCamera
 
 
 class VIOModule:
-    def __init__(self, frame_server: FrameServer) -> None:
+    def __init__(self, status: Status, frame_server: FrameServer) -> None:
         self.client = MQTTClient.get()
 
+        self.status = status
         self.frame_server = frame_server
 
         # settings
@@ -142,12 +144,14 @@ class VIOModule:
 
     @try_except(reraise = False)
     def process_camera_data(self) -> None:
+        self.status.update_status("vio", True)
         while self.running:
             data = self.camera.get_pipe_data()
 
             if data is None:
                 logger.debug("Waiting on camera data")
-                return
+                time.sleep(1)
+                continue
 
             # collect data from the sensor and transform it into "global" NED frame
             ned_pos, ned_vel, rpy, = self.coord_trans.transform_trackcamera_to_global_ned(data)
@@ -159,10 +163,11 @@ class VIOModule:
                     data["tracker_confidence"],
             )
             time.sleep(1 / 10)
-            try:
-                self.running_barrier1.wait(0)
-            except BrokenBarrierError:
-                pass
+        self.status.update_status("vio", False)
+        try:
+            self.running_barrier1.wait(0)
+        except BrokenBarrierError:
+            pass
 
     @try_except(reraise = False)
     def update_frames(self) -> None:
@@ -173,10 +178,10 @@ class VIOModule:
                 self.frame_server.update_frame(left, CameraType.ZED_LEFT, 60, 480)
                 self.frame_server.update_frame(depth, CameraType.ZED_DEPTH, 60, 480)
             time.sleep(1 / 10)
-            try:
-                self.running_barrier2.wait(0)
-            except BrokenBarrierError:
-                pass
+        try:
+            self.running_barrier2.wait(0)
+        except BrokenBarrierError:
+            pass
 
     def run(self) -> None:
         self.running = True
