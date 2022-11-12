@@ -27,6 +27,7 @@ from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
 from vmc.mqtt_client import MQTTClient
+from vmc.status import Status
 from .fcm.fcm import FlightControlModule
 from .vio.vio import VIOModule
 
@@ -34,7 +35,7 @@ MSG_INTERVAL = 1
 
 
 class FusionModule:
-    def __init__(self, vio: VIOModule, fcm: FlightControlModule) -> None:
+    def __init__(self, status: Status, vio: VIOModule, fcm: FlightControlModule) -> None:
         self.client = MQTTClient.get()
 
         self.fusion_attitude_heading = None
@@ -74,6 +75,7 @@ class FusionModule:
             "AT_DERIV_THRESHOLD": 10,
         }
 
+        self.status = status
         self.vio = vio
         self.fcm = fcm
 
@@ -316,10 +318,12 @@ class FusionModule:
         message that is exactly what the FCC needs to generate the hil_gps message
         (with heading)
         """
+        self.status.update_status("fusion", True)
         while self.running:
             # if "avr/fusion/geo" not in self.message_cache:
             if self.fusion_geo is None:
                 logger.debug("Waiting for avr/fusion/geo to be populated")
+                time.sleep(1)
                 continue
 
             # geodetic = self.message_cache["avr/fusion/geo"]
@@ -335,10 +339,12 @@ class FusionModule:
             # if "avr/fusion/velocity/ned" not in self.message_cache:
             if self.fusion_vel_ned is None:
                 logger.debug("Waiting for avr/fusion/velocity/ned to be populated")
+                time.sleep(1)
                 continue
             # elif self.message_cache["avr/fusion/velocity/ned"]["Vn"] is None:
             elif self.fusion_vel_ned["Vn"] is None:
                 logger.debug("avr/fusion/velocity/ned/vn message cache is empty")
+                time.sleep(1)
                 continue
 
             crs = 0
@@ -350,6 +356,7 @@ class FusionModule:
                     crs = int(self.fusion_course["course"])
             else:
                 logger.debug("Waiting for avr/fusion/course message to be populated")
+                time.sleep(1)
                 continue
 
             gs = 0
@@ -361,6 +368,7 @@ class FusionModule:
                     gs = int(self.fusion_groundspeed["groundspeed"])
             else:
                 logger.debug("avr/fusion/groundspeed message cache is empty")
+                time.sleep(1)
                 continue
 
             # if "avr/fusion/attitude/heading" in self.message_cache:
@@ -371,6 +379,7 @@ class FusionModule:
                 )
             else:
                 logger.debug("Waiting for avr/fusion/attitude/heading to be populated")
+                time.sleep(1)
                 continue
 
             hil_gps_update = AvrFusionHilGpsPayload(
@@ -400,10 +409,11 @@ class FusionModule:
             # self.client.send_message("avr/fusion/hil_gps", hil_gps_update)
             self.fcm.gps_fcc.hilgps_msg_handler(hil_gps_update)
             time.sleep(1 / 10)
-            try:
-                self.running_barrier.wait(0)
-            except BrokenBarrierError:
-                pass
+        self.status.update_status("fusion", False)
+        try:
+            self.running_barrier.wait(0)
+        except BrokenBarrierError:
+            pass
 
     @try_except(reraise = True)
     def on_apriltag_message(self, msg: AvrApriltagsSelectedPayload) -> None:
