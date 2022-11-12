@@ -1,6 +1,7 @@
 import math
 import os
 import subprocess
+import time
 import warnings
 from threading import Thread
 from typing import List, Optional, Tuple
@@ -50,6 +51,7 @@ class AprilTagModule:
 
     def close(self) -> None:
         self.process.terminate()
+        time.sleep(1)  # wait for apriltag to be terminated
 
     def setup_transforms(self) -> None:
         cam_rpy = self.config["cam"]["rpy"]
