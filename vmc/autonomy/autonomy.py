@@ -1,3 +1,5 @@
+import asyncio
+import time
 from threading import Barrier, BrokenBarrierError, Thread
 
 import mavsdk
@@ -5,6 +7,7 @@ from pymavlink import mavutil
 from pyzed import sl
 
 from .gimbal import Gimbal
+from .water_drop import WaterDrop
 from ..mqtt_client import MQTTClient
 from ..pcc import PeripheralControlComputer
 from ..status import Status
@@ -33,6 +36,9 @@ class Autonomy:
         self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
         self.gimbal_thread = Thread(target = lambda: self.gimbal.run(), daemon = True)
 
+        self.water_drop = WaterDrop()
+        self.water_drop_thread = Thread(target = lambda: asyncio.run(self.water_drop.run()), daemon = True)
+
         self.running = False
         self.running_barrier = Barrier(2)
 
@@ -41,7 +47,12 @@ class Autonomy:
     def _status_loop(self) -> None:
         self.status.update_status("autonomy", False)
         while self.running:
-            self.status.update_status("autonomy", False not in (self.gimbal_thread.is_alive()))
+            states = (
+                self.gimbal_thread.is_alive(),
+                self.water_drop_thread.is_alive()
+            )
+            self.status.update_status("autonomy", False not in states)
+            time.sleep(1)
         self.status.update_status("autonomy", False)
         try:
             self.running_barrier.wait(0)
@@ -50,6 +61,7 @@ class Autonomy:
 
     def close(self) -> None:
         self.gimbal.close()
+        self.water_drop.close()
         try:
             self.running_barrier.wait(2)
         except BrokenBarrierError:
@@ -57,3 +69,4 @@ class Autonomy:
 
     async def run(self) -> None:
         self.gimbal_thread.start()
+        # self.water_drop_thread.start()
