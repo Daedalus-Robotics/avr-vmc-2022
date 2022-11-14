@@ -52,6 +52,14 @@ class Autonomy:
                 self.water_drop_thread.is_alive()
             )
             self.status.update_status("autonomy", False not in states)
+            is_doing_stuff = (
+                self.gimbal.is_doing_stuff,
+                self.water_drop.is_doing_stuff
+            )
+            if False not in is_doing_stuff:
+                self.status.led_event("autonomy", (100, 0, 255), 0)
+            else:
+                self.status.end_led_event("autonomy")
             time.sleep(1)
         self.status.update_status("autonomy", False)
         try:

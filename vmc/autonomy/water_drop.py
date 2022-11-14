@@ -14,6 +14,10 @@ class WaterDrop:
         self.running = False
         self.running_barrier = Barrier(2)
 
+    @property
+    def is_doing_stuff(self) -> bool:
+        return self.is_dropping
+
     def close(self) -> None:
         self.running = False
         try:
