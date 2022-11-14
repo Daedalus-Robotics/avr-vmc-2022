@@ -36,7 +36,7 @@ class Autonomy:
         self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
         self.gimbal_thread = Thread(target = lambda: self.gimbal.run(), daemon = True)
 
-        self.water_drop = WaterDrop()
+        self.water_drop = WaterDrop(self.pcc, 1)
         self.water_drop_thread = Thread(target = lambda: asyncio.run(self.water_drop.run()), daemon = True)
 
         self.running = False

@@ -3,11 +3,15 @@ from threading import Barrier, BrokenBarrierError
 from loguru import logger
 
 from ..mqtt_client import MQTTClient
+from ..pcc import PeripheralControlComputer
 
 
 class WaterDrop:
-    def __init__(self) -> None:
+    def __init__(self, pcc: PeripheralControlComputer, servo_num: int) -> None:
         self.client = MQTTClient.get()
+
+        self.pcc = pcc
+        self.water_drop_servo = servo_num
 
         self.is_dropping = False
 
@@ -42,3 +46,7 @@ class WaterDrop:
             self.running_barrier.wait(0)
         except BrokenBarrierError:
             pass
+
+    def set_water_drop(self, percent: int) -> None:
+        if 0 <= percent <= 100:
+            self.pcc.set_servo_pct(self.water_drop_servo, percent)
