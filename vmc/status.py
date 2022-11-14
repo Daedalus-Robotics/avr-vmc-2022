@@ -62,7 +62,14 @@ class Status:
 
     def led_event(self, name: str, color: tuple[int, int, int], timeout: float):
         if name in self.status_leds:
-            self.status_leds[name].flash_color(color, timeout)
+            if timeout > 0:
+                self.status_leds[name].flash_color(color, timeout)
+            else:
+                self.status_leds[name].set_color(color)
+
+    def end_led_event(self, name: str):
+        if name in self.status_leds and name in self.statuses:
+            self.status_leds[name].set_color(RUNNING_COLOR if self.statuses[name] else STOPPED_COLOR)
 
     def send_update(self) -> None:
         self.client.send_message("avr/status/update", self.statuses, qos = 2)
