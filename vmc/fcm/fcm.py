@@ -3,9 +3,9 @@ import asyncio
 import mavsdk
 from pymavlink import mavutil
 
-from vmc.status_led import StatusStrip
+from ..status_led import StatusStrip
 from .fcc_library import FlightControlComputer, PyMAVLinkAgent
-from vmc.status import Status
+from ..status import Status
 
 
 class FlightControlModule:

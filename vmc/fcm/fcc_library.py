@@ -23,15 +23,14 @@ from bell.avr.mqtt.payloads import (
 )
 from bell.avr.utils.decorators import async_try_except, try_except
 from bell.avr.utils.timing import rate_limit
-from deprecated.classic import deprecated
 from loguru import logger
 from mavsdk.action import ActionError
 from mavsdk.offboard import VelocityBodyYawspeed, VelocityNedYaw
 from pymavlink import mavutil
 
-from vmc.fcm.fcc_mision_api import MissionAPI
-from vmc.mqtt_client import MQTTClient
-from vmc.status import Status
+from .fcc_mision_api import MissionAPI
+from ..mqtt_client import MQTTClient
+from ..status import Status
 
 
 class FCMMQTTModule:
@@ -157,7 +156,6 @@ class FlightControlComputer(FCMMQTTModule):
         if self.telemetry_tasks_future is not None:
             self.telemetry_tasks_future.cancel()
 
-    @deprecated
     async def _connect(self) -> None:
         """
         Connect the Drone object.
