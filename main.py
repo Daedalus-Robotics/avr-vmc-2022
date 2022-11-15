@@ -22,6 +22,7 @@ from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
 from vmc.status_led import StatusStrip
 from vmc.thermal import ThermalCamera
+from vmc.zmq_server import ZMQServer
 
 logger.level("SETUP", no = 50, color = "<magenta><bold><italic>", icon = "⚙️")
 
@@ -30,11 +31,13 @@ main_thread: Thread | None = None
 
 mqtt_client = MQTTClient.get("localhost", 1883)
 status_strip = StatusStrip(8)
+status_strip.pixels.brightness = 0.5
 status = Status(status_strip)
 status.register_status("mqtt", False, None, led_num = 0)
 mqtt_client.status = status
 
 pcc: PeripheralControlComputer | None = None
+zmq_server: ZMQServer | None = None
 mavp2p: Service | None = None
 thermal: ThermalCamera | None = None
 frame_server: FrameServer | None = None
@@ -61,6 +64,10 @@ def set_armed(state: bool | dict):
 
 @atexit.register
 def stop() -> None:
+    if zmq_server is not None:
+        logger.log("SETUP", "Stopping zmq server...")
+        zmq_server.close()
+
     if autonomy is not None:
         logger.log("SETUP", "Stopping autonomy...")
         autonomy.close()
@@ -126,6 +133,7 @@ async def shutdown_vmc() -> None:
 
 async def main(start_modules: list[str]) -> None:
     global mqtt_client, status
+    global zmq_server
     global pcc, thermal, frame_server
     global mavp2p
     global vio
@@ -160,7 +168,7 @@ async def main(start_modules: list[str]) -> None:
     if ("mavsdk" in start_modules) or ("mavutil" in start_modules):
         logger.log("SETUP", "Setting up mavP2P...")
         mavp2p = Service("mavp2p.service")
-        status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart, 2)
+        status.register_status("mavp2p", mavp2p.is_active, mavp2p.restart)
         mavp2p.on_state = lambda state: status.update_status("mavp2p", state)
         mavp2p_state = mavp2p.state
         logger.debug("MavP2P state: " + mavp2p_state.name)
@@ -193,7 +201,7 @@ async def main(start_modules: list[str]) -> None:
 
     if "fcm" in start_modules:
         logger.log("SETUP", "Setting up fcm...")
-        status.register_status("fcc", False, None, 3)
+        status.register_status("fcc", False, None, 2)
         fcm = FlightControlModule(mavlink_system, pymavlink_connection, status)
         status.add_restart_callback("fcc", fcm.gps_fcc.reboot)
 
@@ -202,7 +210,7 @@ async def main(start_modules: list[str]) -> None:
 
     if "vio" in start_modules:
         logger.log("SETUP", "Setting up vio...")
-        status.register_status("vio", False, None, 4)
+        status.register_status("vio", False, None, 3)
         vio = VIOModule(status, frame_server)
 
         logger.log("SETUP", "Starting vio...")
@@ -210,7 +218,7 @@ async def main(start_modules: list[str]) -> None:
 
     if "fusion" in start_modules:
         logger.log("SETUP", "Setting up fusion...")
-        status.register_status("fusion", False, None, 5)
+        status.register_status("fusion", False, None, 4)
         fusion = FusionModule(status, vio, fcm)
 
         logger.log("SETUP", "Starting fusion...")
@@ -218,7 +226,7 @@ async def main(start_modules: list[str]) -> None:
 
     if "apriltag" in start_modules:
         logger.log("SETUP", "Setting up apriltag...")
-        status.register_status("apriltag", False, None, 6)
+        status.register_status("apriltag", False, None, 5)
         apriltag = AprilTagModule(status)
 
         logger.log("SETUP", "Starting apriltag...")
@@ -226,11 +234,27 @@ async def main(start_modules: list[str]) -> None:
 
     if "autonomy" in start_modules:
         logger.log("SETUP", "Setting up autonomy...")
-        status.register_status("autonomy", False, None, 7)
-        autonomy = Autonomy(mqtt_client, status, pcc, thermal, vio.camera.zed, mavlink_system, pymavlink_connection)
+        status.register_status("autonomy", False, None, 6)
+        autonomy = Autonomy(
+                mqtt_client,
+                status,
+                pcc,
+                thermal,
+                None,  # vio.camera.zed
+                None,  # mavlink_system,
+                None  # pymavlink_connection
+        )
 
         logger.log("SETUP", "Starting autonomy...")
         await autonomy.run()
+
+    if "autonomy" in start_modules:
+        logger.log("SETUP", "Setting up zmq server...")
+        status.register_status("zmq", False, None, 7)
+        zmq_server = ZMQServer(status, autonomy)
+
+        logger.log("SETUP", "Starting zmq server...")
+        zmq_server.run()
 
     status.send_update()
 
@@ -256,14 +280,12 @@ if __name__ == '__main__':
     )
     parser.add_argument(
             "--mavsdk",
-            "--mavlink",
             action = "store_true",
             default = False,
             help = "Connect to mavp2p using mavsdk (async)"
     )
     parser.add_argument(
             "--mavutil",
-            "--pymavlink",
             action = "store_true",
             default = False,
             help = "Connect to mavp2p using mavutil in pymavlink"
@@ -276,14 +298,12 @@ if __name__ == '__main__':
     )
     parser.add_argument(
             "--vio",
-            "--zed",
             action = "store_true",
             default = False,
             help = "Start the zed camera"
     )
     parser.add_argument(
             "--fusion",
-            "--fuse",
             action = "store_true",
             default = False,
             help = "Stream the local position of the avr drone. Requires fcm and vio"
@@ -295,14 +315,12 @@ if __name__ == '__main__':
             help = "Start detecting apriltags with the csi camera. Requires fusion"
     )
     parser.add_argument(
-            "-a",
             "--autonomy",
             action = "store_true",
             default = False,
             help = "Start autonomy. Requires all other modules"
     )
     parser.add_argument(
-            "-i",
             "--interpreter",
             action = "store_true",
             default = False,
@@ -312,21 +330,18 @@ if __name__ == '__main__':
     is_interpreter = args.pop("interpreter") if "interpreter" in args else False
     is_interpreter = is_interpreter or bool(int(os.environ.get("IS_INTERPRETER", "0")))
     if not (True in args.values()) or args.get("autonomy", False):
-        for k in args:
-            args[k] = True
+        args["pcc"] = True
+        args["thermal"] = True
+        args["autonomy"] = True
     # if args.get("apriltag", False):
     #     if "apriltag" in args:
     #         args["apriltag"] = True
     if args.get("fusion", False):
-        if "fcm" in args:
-            args["fcm"] = True
-        if "vio" in args:
-            args["vio"] = True
+        args["fcm"] = True
+        args["vio"] = True
     if args.get("fcm", False):
-        if "mavsdk" in args:
-            args["mavsdk"] = True
-        if "mavutil" in args:
-            args["mavutil"] = True
+        args["mavsdk"] = True
+        args["mavutil"] = True
     start_items = []
     for name, start in args.items():
         if start:
