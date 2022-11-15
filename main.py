@@ -111,6 +111,7 @@ def stop() -> None:
             status.update_status("mavp2p", False)
 
         status.update_status("vmc", False)
+        status.update_status("mqtt", False)
         mqtt_client.disconnect()
         logger.log("SETUP", "Done stopping!")
         has_started = False
@@ -121,7 +122,7 @@ def restart_vmc() -> None:
     stop()
     if fcm is not None:
         fcm.gps_fcc.shutdown()
-    time.sleep(3)
+    time.sleep(2)
     subprocess.Popen(["sudo", "reboot"])
 
 
@@ -130,7 +131,7 @@ def shutdown_vmc() -> None:
     stop()
     if fcm is not None:
         fcm.gps_fcc.shutdown()
-    time.sleep(3)
+    time.sleep(2)
     subprocess.Popen(["sudo", "shutdown", "now"])
 
 
@@ -334,7 +335,10 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     is_interpreter = args.pop("interpreter") if "interpreter" in args else False
     is_interpreter = is_interpreter or bool(int(os.environ.get("IS_INTERPRETER", "0")))
-    if not (True in args.values()) or args.get("autonomy", False):
+    if not (True in args.values()):
+        for k in args:
+            args[k] = True
+    if args.get("autonomy", False):
         args["pcc"] = True
         args["thermal"] = True
         args["autonomy"] = True
