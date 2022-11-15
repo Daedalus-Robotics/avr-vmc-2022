@@ -50,3 +50,10 @@ class WaterDrop:
     def set_water_drop(self, percent: int) -> None:
         if 0 <= percent <= 100:
             self.pcc.set_servo_pct(self.water_drop_servo, percent)
+
+    def zmq_set(self, message: dict) -> None:
+        try:
+            percent = message.get("percent", 0)
+            self.set_water_drop(percent)
+        except AttributeError:
+            logger.warning("Got invalid message for zmq_set")

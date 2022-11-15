@@ -128,6 +128,35 @@ class Gimbal:
     def set_auto_aim(self, enabled: bool) -> None:
         self.auto_aim_enabled = enabled
 
+    def zmq_pos(self, message: dict):
+        try:
+            x = message.get("x", 0)
+            y = message.get("y", 0)
+            self.set_pos(x, y)
+        except AttributeError:
+            logger.warning("Got invalid message for zmq_pos")
+
+    def zmq_move(self, message: dict):
+        try:
+            x = message.get("x", 0)
+            y = message.get("y", 0)
+            self.move(x, y)
+        except AttributeError:
+            logger.warning("Got invalid message for zmq_move")
+
+    def zmq_disable(self, _: str):
+        self.disable()
+
+    def zmq_auto(self, message: dict):
+        try:
+            enabled = message.get("enabled", False)
+            self.set_auto_aim(enabled)
+        except AttributeError:
+            logger.warning("Got invalid message for zmq_auto")
+
+    def zmq_fire(self, _: str):
+        self.pcc.fire_laser()
+
     def run(self) -> None:
         logger.info("Gimbal started")
         self.running = True
