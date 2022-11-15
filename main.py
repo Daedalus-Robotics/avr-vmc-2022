@@ -333,9 +333,8 @@ if __name__ == '__main__':
         args["pcc"] = True
         args["thermal"] = True
         args["autonomy"] = True
-    # if args.get("apriltag", False):
-    #     if "apriltag" in args:
-    #         args["apriltag"] = True
+    if args.get("apriltag", False):
+        args["fusion"] = True
     if args.get("fusion", False):
         args["fcm"] = True
         args["vio"] = True
