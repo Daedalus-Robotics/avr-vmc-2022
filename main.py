@@ -28,6 +28,7 @@ logger.level("SETUP", no = 50, color = "<magenta><bold><italic>", icon = "⚙️
 
 main_thread: Thread | None = None
 # status_thread: Thread | None = None
+has_started = False
 
 mqtt_client = MQTTClient.get("localhost", 1883)
 status_strip = StatusStrip(8)
@@ -64,52 +65,55 @@ def set_armed(state: bool | dict):
 
 @atexit.register
 def stop() -> None:
-    if zmq_server is not None:
-        logger.log("SETUP", "Stopping zmq server...")
-        zmq_server.close()
+    global has_started
+    if has_started:
+        if zmq_server is not None:
+            logger.log("SETUP", "Stopping zmq server...")
+            zmq_server.close()
 
-    if autonomy is not None:
-        logger.log("SETUP", "Stopping autonomy...")
-        autonomy.close()
+        if autonomy is not None:
+            logger.log("SETUP", "Stopping autonomy...")
+            autonomy.close()
 
-    if thermal is not None:
-        logger.log("SETUP", "Stopping thermal camera...")
-        thermal.close()
+        if thermal is not None:
+            logger.log("SETUP", "Stopping thermal camera...")
+            thermal.close()
 
-    if pcc is not None:
-        logger.log("SETUP", "Stopping pcc...")
-        pcc.color_wipe(10)
-        pcc.end()
-        status.update_status("pcc", False)
+        if pcc is not None:
+            logger.log("SETUP", "Stopping pcc...")
+            pcc.color_wipe(10)
+            pcc.end()
+            status.update_status("pcc", False)
 
-    if apriltag is not None:
-        logger.log("SETUP", "Stopping apriltag...")
-        apriltag.close()
+        if apriltag is not None:
+            logger.log("SETUP", "Stopping apriltag...")
+            apriltag.close()
 
-    if fusion is not None:
-        logger.log("SETUP", "Stopping fusion...")
-        fusion.close()
+        if fusion is not None:
+            logger.log("SETUP", "Stopping fusion...")
+            fusion.close()
 
-    if vio is not None:
-        logger.log("SETUP", "Stopping vio...")
-        vio.close()
+        if vio is not None:
+            logger.log("SETUP", "Stopping vio...")
+            vio.close()
 
-    if fcm is not None:
-        logger.log("SETUP", "Stopping fcm...")
-        fcm.fcc.close()
+        if fcm is not None:
+            logger.log("SETUP", "Stopping fcm...")
+            fcm.fcc.close()
 
-    if pymavlink_connection is not None:
-        logger.log("SETUP", "Stopping pymavlink...")
-        pymavlink_connection.close()
-        status.update_status("fcc", False)
+        if pymavlink_connection is not None:
+            logger.log("SETUP", "Stopping pymavlink...")
+            pymavlink_connection.close()
+            status.update_status("fcc", False)
 
-    if mavp2p is not None:
-        mavp2p.stop()
-        status.update_status("mavp2p", False)
+        if mavp2p is not None:
+            mavp2p.stop()
+            status.update_status("mavp2p", False)
 
-    status.update_status("vmc", False)
-    mqtt_client.disconnect()
-    logger.log("SETUP", "Done stopping!")
+        status.update_status("vmc", False)
+        mqtt_client.disconnect()
+        logger.log("SETUP", "Done stopping!")
+        has_started = False
 
 
 def restart_vmc() -> None:
@@ -131,6 +135,7 @@ def shutdown_vmc() -> None:
 
 
 async def main(start_modules: list[str]) -> None:
+    global has_started
     global mqtt_client, status
     global zmq_server
     global pcc, thermal, frame_server
@@ -141,6 +146,7 @@ async def main(start_modules: list[str]) -> None:
     global apriltag
     global autonomy
 
+    has_started = True
     mqtt_client.connect()
 
     status.register_status("vmc", True, restart_vmc)
