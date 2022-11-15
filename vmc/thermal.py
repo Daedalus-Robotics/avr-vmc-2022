@@ -16,11 +16,8 @@ from .utils import constrain, map
 
 from scipy.interpolate import griddata
 
-platform_detector = PlatformDetector()
-TESTING = not (platform_detector.board.any_raspberry_pi or platform_detector.board.any_jetson_board)
-if not TESTING:
-    import board
-    import adafruit_amg88xx
+import board
+import adafruit_amg88xx
 
 VIEW_SIZE = 30
 CAMERA_SIZE = 8
@@ -47,13 +44,11 @@ class ThermalCamera:
         upper_bound = np.array([0, 0, 255])
         self.detector = Detector(lower_bound, upper_bound, 2)
 
-        if not TESTING:
-            i2c = board.I2C()
-            self.amg = adafruit_amg88xx.AMG88XX(i2c)
-            logger.success("Connected to thermal camera!")
-        else:
-            self.testing_change_pos = 0
-            self.testing_pos = (CAMERA_SIZE // 2, CAMERA_SIZE // 2)
+        i2c = board.I2C()
+        self.amg = adafruit_amg88xx.AMG88XX(i2c)
+        logger.success("Connected to thermal camera!")
+        # self.testing_change_pos = 0
+        # self.testing_pos = (CAMERA_SIZE // 2, CAMERA_SIZE // 2)
 
         self.update_barrier = Barrier(2)
 
@@ -66,37 +61,34 @@ class ThermalCamera:
 
     @property
     def pixels(self) -> np.ndarray:
-        if not TESTING:
-            pixel_list = self.amg.pixels
-            int_pixel_list = []
-            x = 0
-            for row in pixel_list:
-                y = 0
-                int_row = []
-                for pixel in row:
-                    int_row.append(round(pixel))
-                    y += 1
-                int_pixel_list.append(int_row)
-                x += 1
-            pixels = np.array(int_pixel_list)
-
-        else:
-            x, y = self.testing_pos
-            if self.testing_change_pos == 0:
-                x, y = randint(x - 1, x + 1), randint(y - 1, y + 1)
-                self.testing_pos = (x, y)
-            self.testing_change_pos = (self.testing_change_pos + 1) % 8
-            if x >= 7:
-                x = CAMERA_SIZE // 2
-            elif x < 1:
-                x = CAMERA_SIZE // 2
-            if y >= 7:
-                y = CAMERA_SIZE // 2
-            elif y < 1:
-                y = CAMERA_SIZE // 2
-            radius = 1
-            pixels = np.zeros((CAMERA_SIZE, CAMERA_SIZE, 1), np.uint8)
-            cv2.circle(pixels, (x, y), radius, 78, -1)
+        pixel_list = self.amg.pixels
+        int_pixel_list = []
+        x = 0
+        for row in pixel_list:
+            y = 0
+            int_row = []
+            for pixel in row:
+                int_row.append(round(pixel))
+                y += 1
+            int_pixel_list.append(int_row)
+            x += 1
+        pixels = np.array(int_pixel_list)
+        # x, y = self.testing_pos
+        # if self.testing_change_pos == 0:
+        #     x, y = randint(x - 1, x + 1), randint(y - 1, y + 1)
+        #     self.testing_pos = (x, y)
+        # self.testing_change_pos = (self.testing_change_pos + 1) % 8
+        # if x >= 7:
+        #     x = CAMERA_SIZE // 2
+        # elif x < 1:
+        #     x = CAMERA_SIZE // 2
+        # if y >= 7:
+        #     y = CAMERA_SIZE // 2
+        # elif y < 1:
+        #     y = CAMERA_SIZE // 2
+        # radius = 1
+        # pixels = np.zeros((CAMERA_SIZE, CAMERA_SIZE, 1), np.uint8)
+        # cv2.circle(pixels, (x, y), radius, 78, -1)
         return pixels
 
     def get_frame(self, color = False) -> np.ndarray:
@@ -143,8 +135,7 @@ class ThermalCamera:
         while self.running:
             self.update_frame()
             self._stream()
-            if TESTING:
-                time.sleep(1 // 15)
+            # time.sleep(1 // 15)
 
     def _stream(self) -> None:
         if self.client.is_connected:
