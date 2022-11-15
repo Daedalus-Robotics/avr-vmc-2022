@@ -9,7 +9,7 @@ from mavsdk.geofence import Point, Polygon
 from mavsdk.mission_raw import MissionItem, MissionRawError
 from pymavlink import mavutil
 
-from ...mqtt_client import MQTTClient
+from vmc.mqtt_client import MQTTClient
 
 
 class MissionAPI:

@@ -14,9 +14,9 @@ from systemctl import Service, ServiceState
 from vmc.apriltag.python.apriltag_processor import AprilTagModule
 from vmc.autonomy.autonomy import Autonomy
 from vmc.frame_server import FrameServer
-from vmc.mqtt.fcm.fcm import FlightControlModule
-from vmc.mqtt.fusion import FusionModule
-from vmc.mqtt.vio.vio import VIOModule
+from vmc.fcm import FlightControlModule
+from vmc.fusion import FusionModule
+from vmc.vio.vio import VIOModule
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
