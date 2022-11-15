@@ -117,18 +117,17 @@ def restart_vmc() -> None:
     stop()
     if fcm is not None:
         fcm.gps_fcc.shutdown()
-    time.sleep(2)
+    time.sleep(3)
     subprocess.Popen(["sudo", "reboot"])
 
 
-async def shutdown_vmc() -> None:
+def shutdown_vmc() -> None:
     logger.info("Shutting down vmc...")
     stop()
     if fcm is not None:
         fcm.gps_fcc.shutdown()
-    time.sleep(2)
+    time.sleep(3)
     subprocess.Popen(["sudo", "shutdown", "now"])
-    await asyncio.Future()
 
 
 async def main(start_modules: list[str]) -> None:
@@ -147,7 +146,7 @@ async def main(start_modules: list[str]) -> None:
     status.register_status("vmc", True, restart_vmc)
     mqtt_client.register_callback(
             "avr/shutdown",
-            lambda: asyncio.run(shutdown_vmc()),
+            shutdown_vmc,
             is_json = False,
             use_args = False
     )
