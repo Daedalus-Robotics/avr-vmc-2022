@@ -6,8 +6,8 @@ from typing import Callable
 import zmq
 from loguru import logger
 
-from .autonomy.autonomy import Autonomy
-from .status import Status
+from vmc.autonomy.autonomy import Autonomy
+from vmc.status import Status
 
 
 class ZMQServer:

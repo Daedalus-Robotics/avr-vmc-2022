@@ -15,9 +15,9 @@ from bell.avr.mqtt.payloads import (
 from bell.avr.utils.decorators import run_forever, try_except
 from loguru import logger
 
-from ..frame_server import CameraType, FrameServer
-from ..mqtt_client import MQTTClient
-from ..status import Status
+from vmc.frame_server import CameraType, FrameServer
+from vmc.mqtt_client import MQTTClient
+from vmc.status import Status
 from .vio_library import CameraCoordinateTransformation
 from .zed_library import ZEDCamera
 
