@@ -14,7 +14,7 @@ from systemctl import Service, ServiceState
 from vmc.apriltag.python.apriltag_processor import AprilTagModule
 from vmc.autonomy.autonomy import Autonomy
 from vmc.frame_server import FrameServer
-from vmc.fcm import FlightControlModule
+from vmc.fcm.fcm import FlightControlModule
 from vmc.fusion import FusionModule
 from vmc.vio.vio import VIOModule
 from vmc.mqtt_client import MQTTClient
@@ -107,7 +107,6 @@ def stop() -> None:
             status.update_status("fcc", False)
 
         if mavp2p is not None:
-            mavp2p.stop()
             status.update_status("mavp2p", False)
 
         status.update_status("vmc", False)
@@ -246,9 +245,10 @@ async def main(start_modules: list[str]) -> None:
                 status,
                 pcc,
                 thermal,
-                None,  # vio.camera.zed
-                None,  # mavlink_system,
-                None  # pymavlink_connection
+                vio,
+                mavlink_system,
+                pymavlink_connection,
+                apriltag
         )
 
         logger.log("SETUP", "Starting autonomy...")
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     if args.get("autonomy", False):
         args["pcc"] = True
         args["thermal"] = True
-        args["autonomy"] = True
+        args["apriltag"] = True
     if args.get("apriltag", False):
         args["fusion"] = True
     if args.get("fusion", False):

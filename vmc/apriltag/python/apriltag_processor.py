@@ -4,7 +4,7 @@ import subprocess
 import time
 import warnings
 from threading import Thread
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 import transforms3d as t3d
@@ -49,9 +49,20 @@ class AprilTagModule:
 
         self.client.register_callback("avr/apriltags/raw", self.on_apriltag_message)
 
+        self.detections = {}
+
     def close(self) -> None:
         self.process.terminate()
         time.sleep(1)  # wait for apriltag to be terminated
+
+    def get_valid_apriltags(self, cutoff: float) -> dict[int, Any]:
+        valid_apriltags = {}
+        for tid, t in self.detections:
+            tag, dtime = t
+            time_offset = time.time() - dtime
+            if time_offset > cutoff:
+                valid_apriltags[tid] = tag
+        return valid_apriltags
 
     def setup_transforms(self) -> None:
         cam_rpy = self.config["cam"]["rpy"]
@@ -133,6 +144,7 @@ class AprilTagModule:
                     closest_tag = index
 
             tag_list.append(tag)
+            self.detections[id_] = (tag, time.time())
 
         self.client.send_message(
                 "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags = tag_list)

@@ -38,7 +38,8 @@ class ZMQServer:
             "gimbal_disable": self.autonomy.gimbal.zmq_disable,
             "gimbal_auto": self.autonomy.gimbal.zmq_auto,
             "gimbal_fire": self.autonomy.gimbal.zmq_fire,
-            "water_drop_set": self.autonomy.water_drop.zmq_set
+            "water_drop_kill": self.autonomy.water_drop.kill,
+            "water_drop_try": self.autonomy.water_drop.try_drop
         }
 
         for topic in self.topic_map:
