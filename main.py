@@ -107,6 +107,7 @@ def stop() -> None:
             status.update_status("fcc", False)
 
         if mavp2p is not None:
+            mavp2p.stop()
             status.update_status("mavp2p", False)
 
         status.update_status("vmc", False)
@@ -254,13 +255,13 @@ async def main(start_modules: list[str]) -> None:
         logger.log("SETUP", "Starting autonomy...")
         await autonomy.run()
 
-    if "autonomy" in start_modules:
-        logger.log("SETUP", "Setting up zmq server...")
-        status.register_status("zmq", False, None, 7)
-        zmq_server = ZMQServer(status, autonomy)
-
-        logger.log("SETUP", "Starting zmq server...")
-        zmq_server.run()
+    # if "autonomy" in start_modules:
+    #     logger.log("SETUP", "Setting up zmq server...")
+    #     status.register_status("zmq", False, None, 7)
+    #     zmq_server = ZMQServer(status, autonomy)
+    #
+    #     logger.log("SETUP", "Starting zmq server...")
+    #     zmq_server.run()
 
     status.send_update()
 
