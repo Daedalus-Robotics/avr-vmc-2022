@@ -34,7 +34,7 @@ class ZMQServer:
 
         self.topic_map: dict[str, Callable[[dict | list | str | bytes], None]] = {
             "gimbal_pos": self.autonomy.gimbal.zmq_pos,
-            "gimbal_move": self.autonomy.gimbal.zmq_pos,
+            "gimbal_move": self.autonomy.gimbal.zmq_move,
             "gimbal_disable": self.autonomy.gimbal.zmq_disable,
             "gimbal_auto": self.autonomy.gimbal.zmq_auto,
             "gimbal_fire": self.autonomy.gimbal.zmq_fire,
