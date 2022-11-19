@@ -101,7 +101,9 @@ int main()
 
     //################################################################### MAIN LOOP ##########################################################################################
 
-    //cv::resizeWindow("frame", 1280,720);
+    std::cout << "1" << std::endl;
+    cv::resizeWindow("frame", 1280,720);
+    std::cout << "2" << std::endl;
     while (capture.isOpened())
     {
         auto start = std::chrono::system_clock::now();
@@ -110,9 +112,9 @@ int main()
         bool result = capture.read(frame);
         if (result)
         {
-            //std::cout << "got frame" << std::endl;
-            //cv::imshow("frame", frame);
-            //cv::waitKey(1);
+            std::cout << "got frame" << std::endl;
+            cv::imshow("frame", frame);
+            cv::waitKey(1);
             
             //undistort it
             undistort_frame(frame);

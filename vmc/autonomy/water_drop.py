@@ -1,3 +1,4 @@
+import json
 import time
 from threading import Barrier, BrokenBarrierError
 
@@ -47,6 +48,8 @@ class WaterDrop:
         self.is_dropping = False
 
     def try_drop(self, message: dict) -> None:
+        if not isinstance(message, dict):
+            message = json.loads(message)
         tag_id = message.get("tag", -1)
         recent_apriltags = self.apriltags.get_valid_apriltags(2)
         if tag_id in recent_apriltags:

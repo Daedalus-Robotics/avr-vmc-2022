@@ -42,9 +42,9 @@ class AprilTagModule:
             "tag_truth": {"0": {"rpy": [0, 0, 0], "xyz": [0, 0, 0]}},
         }
 
-        # dict to hold transformation matrixes
+        # dict to hold transformation matrices
         self.tm = {}
-        # setup transformation matrixes
+        # setup transformation matrices
         self.setup_transforms()
 
         self.client.register_callback("avr/apriltags/raw", self.on_apriltag_message)
