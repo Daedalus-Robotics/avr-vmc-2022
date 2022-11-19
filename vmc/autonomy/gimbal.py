@@ -20,6 +20,9 @@ Y_LIMITS = (500, 2500)
 Y_SOFT_LIMIT = (50, 180)
 Y_CENTER = 90
 
+X_OFFSET = 0
+Y_OFFSET = 0
+
 
 class Gimbal:
     def __init__(self, pcc: PeripheralControlComputer, x_servo: int, y_servo: int, thermal: ThermalCamera) -> None:
@@ -178,7 +181,7 @@ class Gimbal:
                     # print("Detection: " + str(detection))
                     x_degrees = utils.map(detection[0], 0, 30, 0, CAMERA_FOV)
                     # print("1: " + str(x_degrees))
-                    x_degrees = utils.map(x_degrees, 0, 80, -40, 40)
+                    x_degrees = utils.map(x_degrees, 0, 80, -40, 40) + X_OFFSET
                     # print("2: " + str(x_degrees))
                     x_degrees = int(utils.constrain(x_degrees, -40, 40))
                     # print("3: " + str(x_degrees))
@@ -189,7 +192,7 @@ class Gimbal:
                     # camera_y = utils.deadzone(int(utils.map(detection[1], 0, 30, 0, CAMERA_FOV) - 15), 10)
 
                     y_degrees = utils.map(detection[1], 0, 30, 0, CAMERA_FOV)
-                    y_degrees = utils.map(y_degrees, 0, 80, -40, 40)
+                    y_degrees = utils.map(y_degrees, 0, 80, -40, 40) + Y_OFFSET
                     y_degrees = int(utils.constrain(y_degrees, -40, 40))
                     # y_degrees = utils.deadzone(int(y_degrees), 10)
                     y_degrees = utils.deadzone(y_degrees, 10)
