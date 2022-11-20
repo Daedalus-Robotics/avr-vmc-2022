@@ -20,8 +20,8 @@ Y_LIMITS = (500, 2500)
 Y_SOFT_LIMIT = (50, 180)
 Y_CENTER = 90
 
-X_OFFSET = 0
-Y_OFFSET = 0
+X_OFFSET = 7
+Y_OFFSET = -4
 
 
 class Gimbal:
@@ -170,12 +170,13 @@ class Gimbal:
                 self.do_single_aim = False
                 aimed_last = True
                 try:
-                    self.thermal.update_barrier.wait(2000)
+                    self.thermal.update_barrier.wait(2)
                 except BrokenBarrierError:
                     time.sleep(1)
                     logger.warning("Thermal camera is taking too long to respond")
                     continue
                 if self.thermal.detector.currently_detecting:
+                    pass
                     detection = self.thermal.detector.main_detection_center
 
                     # print("Detection: " + str(detection))
@@ -201,12 +202,11 @@ class Gimbal:
 
                     # print("Move amount: " + str(x_degrees_half) + ", " + str(y_degrees_half))# + ", " + str(camera_y))
                     self.move(x_degrees_half, y_degrees_half)
-
-                    time.sleep(1 / 2)
             else:
                 if aimed_last:
                     self.center()
                 aimed_last = False
+            time.sleep(1 / 5)
             try:
                 self.running_barrier.wait(0)
             except BrokenBarrierError:
