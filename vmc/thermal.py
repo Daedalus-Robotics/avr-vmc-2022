@@ -1,12 +1,10 @@
 import math
 import time
-from random import randint
 from threading import Barrier, BrokenBarrierError, Thread
 from typing import List
 
 import cv2
 import numpy as np
-from adafruit_platformdetect import Detector as PlatformDetector
 from colour import Color
 from loguru import logger
 
@@ -126,10 +124,10 @@ class ThermalCamera:
 
         self.detector.update(hsv_frame)
 
-        try:
-            self.update_barrier.wait(0)
-        except BrokenBarrierError:
-            self.update_barrier.reset()
+        # try:
+        #     self.update_barrier.wait(0)
+        # except BrokenBarrierError:
+        #     self.update_barrier.reset()
 
     def _update_loop(self) -> None:
         while self.running:
@@ -141,7 +139,7 @@ class ThermalCamera:
         if self.client.is_connected:
             frame = self.get_frame(color = True)
             frame = stream.image_resize(frame, 300)
-            frame = self.detector.overlay(frame)
+            # frame = self.detector.overlay(frame)
             success, encoded_frame = stream.encode_frame(frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
             if success:
                 self.client.send_message("avr/raw/thermal/reading", encoded_frame)
