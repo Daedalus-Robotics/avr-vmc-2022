@@ -4,7 +4,6 @@ from threading import Barrier, BrokenBarrierError, Thread
 
 import mavsdk
 from pymavlink import mavutil
-from pyzed import sl
 
 from .gimbal import Gimbal
 from .water_drop import WaterDrop
