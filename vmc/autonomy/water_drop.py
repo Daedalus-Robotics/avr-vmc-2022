@@ -33,6 +33,31 @@ class WaterDrop:
         self.running = False
         self.running_barrier = Barrier(2)
 
+        self.do_off_en = False
+        self.do_off_dis = False
+        self.do_go = False
+        self.do_go_cords = (0, 0, 0, 0)
+
+        self.client.register_callback("off_en", self.mqtt_off_en, False, False)
+        self.client.register_callback("off_dis", self.mqtt_off_dis, False, False)
+        self.client.register_callback("off_go", self.mqtt_go, True, True)
+
+    def mqtt_off_en(self) -> None:
+        self.do_off_en = True
+
+    def mqtt_off_dis(self) -> None:
+        self.do_off_dis = True
+
+    def mqtt_go(self, message: dict) -> None:
+        if not isinstance(message, dict):
+            message = json.loads(message)
+        n = message.get("n", 0)
+        e = message.get("e", 0)
+        d = message.get("d", 0)
+        y = message.get("y", 0)
+        self.do_go = True
+        self.do_go_cords = (n, e, d, y)
+
     @property
     def is_doing_stuff(self) -> bool:
         return self.is_dropping
@@ -75,11 +100,29 @@ class WaterDrop:
         logger.info("Water Drop started")
         self.running = True
         while self.running:
+            if self.do_off_en:
+                logger.info("Enable offboard control")
+                self.do_off_en = False
+                await self.mavlink_system.offboard.start()
+            if self.do_off_dis:
+                logger.info("Disable offboard control")
+                self.do_off_dis = False
+                await self.mavlink_system.offboard.stop()
+            if self.do_go:
+                logger.info(f"Moving to pos: {self.do_go_cords}")
+                self.do_go = False
+                pos = mavsdk.system.offboard.PositionNedYaw(
+                        self.do_go_cords[0],
+                        self.do_go_cords[1],
+                        self.do_go_cords[2],
+                        self.do_go_cords[3],
+                )
+                await self.mavlink_system.offboard.set_position_ned(pos)
             if self.is_dropping:
                 try:
                     # while self.is_dropping:
                     #     pass
-                    pos_world = self.dropping_tag = ["pos_world"]
+                    pos_world = self.dropping_tag["pos_world"]
                     n = pos_world["x"]
                     e = pos_world["y"]
                     d = pos_world["z"]
