@@ -101,7 +101,7 @@ class ZEDCamera(object):
         logger.debug("Zed Camera Enabled positional tracking")
 
         # create class attributes to hold the camera data
-        # i'm not really sure, Zed API is super weird
+        # I'm not really sure, Zed API is super weird
         self.zed_pose = sl.Pose()
         self.zed_sensors = sl.SensorsData()
 

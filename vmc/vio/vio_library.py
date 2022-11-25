@@ -45,9 +45,9 @@ class CameraCoordinateTransformation:
             }
         }
 
-        # dict to hold transformation matrixes
+        # dict to hold transformation matrices
         self.tm = {}
-        # setup transformation matrixes
+        # setup transformation matrices
         self.setup_transforms()
 
     def setup_transforms(self) -> None:
