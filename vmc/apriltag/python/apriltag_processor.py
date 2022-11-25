@@ -17,10 +17,11 @@ from bell.avr.mqtt.payloads import (
     AvrApriltagsVisibleTagsPosWorld,
 )
 
-from ...status import Status
 from ...mqtt_client import MQTTClient
+from ...status import Status
 
 warnings.simplefilter("ignore", np.RankWarning)
+
 
 class AprilTagModule:
     def __init__(self, status: Status) -> None:
@@ -72,7 +73,7 @@ class AprilTagModule:
                 cam_rpy[0],
                 cam_rpy[1],
                 cam_rpy[2],
-                axes = "rxyz",
+                axes="rxyz",
         )
 
         H_cam_aeroBody = t3d.affines.compose(self.config["cam"]["pos"], rmat, [1, 1, 1])
@@ -83,7 +84,7 @@ class AprilTagModule:
         for tag, tag_data in self.config["tag_truth"].items():
             name = f"tag_{tag}"
             rmat = t3d.euler.euler2mat(
-                    tag_data["rpy"][0], tag_data["rpy"][1], tag_data["rpy"][2], axes = "rxyz"
+                    tag_data["rpy"][0], tag_data["rpy"][1], tag_data["rpy"][2], axes="rxyz"
             )
             tag_tf = t3d.affines.compose(tag_data["xyz"], rmat, [1, 1, 1])
 
@@ -115,17 +116,17 @@ class AprilTagModule:
                 continue
 
             tag = AvrApriltagsVisibleTags(
-                    id = id_,
-                    horizontal_dist = horizontal_distance,
-                    vertical_dist = vertical_distance,
-                    angle_to_tag = angle,
-                    heading = heading,
-                    pos_rel = {
+                    id=id_,
+                    horizontal_dist=horizontal_distance,
+                    vertical_dist=vertical_distance,
+                    angle_to_tag=angle,
+                    heading=heading,
+                    pos_rel={
                         "x": pos_rel[0],
                         "y": pos_rel[1],
                         "z": pos_rel[2],
                     },
-                    pos_world = {
+                    pos_world={
                         "x": None,
                         "y": None,
                         "z": None,
@@ -135,9 +136,9 @@ class AprilTagModule:
             # add some more info if we had the truth data for the tag
             if pos_world is not None and pos_world.any():
                 tag["pos_world"] = AvrApriltagsVisibleTagsPosWorld(
-                        x = pos_world[0],
-                        y = pos_world[1],
-                        z = pos_world[2],
+                        x=pos_world[0],
+                        y=pos_world[1],
+                        z=pos_world[2],
                 )
                 if horizontal_distance < min_dist:
                     min_dist = horizontal_distance
@@ -145,9 +146,10 @@ class AprilTagModule:
 
             tag_list.append(tag)
             self.detections[id_] = (tag, time.time())
+        self.visible_detections = tag_list
 
         self.client.send_message(
-                "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags = tag_list)
+                "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags=tag_list)
         )
 
         if closest_tag is not None:
@@ -159,13 +161,13 @@ class AprilTagModule:
             assert pos_world["z"] is not None
 
             apriltag_position = AvrApriltagsSelectedPayload(
-                    tag_id = tag_list[closest_tag]["id"],
-                    pos = {
+                    tag_id=tag_list[closest_tag]["id"],
+                    pos={
                         "n": pos_world["x"],
                         "e": pos_world["y"],
                         "d": pos_world["z"],
                     },
-                    heading = tag_list[closest_tag]["heading"],
+                    heading=tag_list[closest_tag]["heading"],
             )
 
             self.client.send_message("avr/apriltags/selected", apriltag_position)
@@ -242,7 +244,7 @@ class AprilTagModule:
 
         tag_rot = np.asarray(tag["rotation"])
         rpy = t3d.euler.mat2euler(tag_rot)
-        R = t3d.euler.euler2mat(0, 0, rpy[2], axes = "rxyz")
+        R = t3d.euler.euler2mat(0, 0, rpy[2], axes="rxyz")
         H_tag_cam = t3d.affines.compose(
                 [tag["pos"]["x"] * 100, tag["pos"]["y"] * 100, tag["pos"]["z"] * 100],
                 R,
@@ -310,11 +312,4 @@ class AprilTagModule:
         dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../c/avrapriltags")
         os.system(f"chmod a+x {dir_path}")
         self.process = subprocess.Popen(dir_path)
-        Thread(target = self._status_loop, daemon = True).start()
-
-
-if __name__ == "__main__":
-    atag = AprilTagModule()
-    atag.run()
-    while True:
-        pass
+        Thread(target=self._status_loop, daemon=True).start()
