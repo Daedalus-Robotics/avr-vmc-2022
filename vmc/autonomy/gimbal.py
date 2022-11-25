@@ -167,6 +167,8 @@ class Gimbal:
         aimed_last = None
         while self.running:
             if self.auto_aim_enabled or self.do_single_aim:
+                if not aimed_last:
+                    self.pcc.set_onboard_base_color((100, 150, 50, 0))
                 self.do_single_aim = False
                 aimed_last = True
                 try:
@@ -204,6 +206,7 @@ class Gimbal:
                     self.move(x_degrees_half, y_degrees_half)
             else:
                 if aimed_last:
+                    self.pcc.set_onboard_base_color((0, 0, 0, 0))
                     self.center()
                 aimed_last = False
             time.sleep(1 / 5)
