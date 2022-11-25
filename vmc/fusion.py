@@ -488,8 +488,3 @@ class FusionModule:
             self.assemble_hil_gps_message()
         except Exception:
             logger.exception("Issue while assembling hil message")
-
-
-if __name__ == "__main__":
-    fusion = FusionModule()
-    fusion.run()

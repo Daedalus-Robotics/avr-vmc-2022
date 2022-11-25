@@ -78,10 +78,10 @@ class AprilTagModule:
                 axes="rxyz",
         )
 
-        H_cam_aeroBody = t3d.affines.compose(self.config["cam"]["pos"], rmat, [1, 1, 1])
-        H_aeroBody_cam = np.linalg.inv(H_cam_aeroBody)
+        h_cam_aero_body = t3d.affines.compose(self.config["cam"]["pos"], rmat, [1, 1, 1])
+        h_aero_body_cam = np.linalg.inv(h_cam_aero_body)
 
-        self.tm["H_aeroBody_cam"] = H_aeroBody_cam
+        self.tm["H_aeroBody_cam"] = h_aero_body_cam
 
         for tag, tag_data in self.config["tag_truth"].items():
             name = f"tag_{tag}"
@@ -90,11 +90,11 @@ class AprilTagModule:
             )
             tag_tf = t3d.affines.compose(tag_data["xyz"], rmat, [1, 1, 1])
 
-            H_to_from = f"H_{name}_aeroRef"
-            self.tm[H_to_from] = tag_tf
+            h_to_from = f"H_{name}_aeroRef"
+            self.tm[h_to_from] = tag_tf
 
-            H_to_from = f"H_{name}_cam"
-            self.tm[H_to_from] = np.eye(4)
+            h_to_from = f"H_{name}_cam"
+            self.tm[h_to_from] = np.eye(4)
 
     def on_apriltag_message(self, payload: AvrApriltagsRawPayload) -> None:
         tag_list: List[AvrApriltagsVisibleTags] = []
@@ -174,7 +174,8 @@ class AprilTagModule:
 
             self.client.send_message("avr/apriltags/selected", apriltag_position)
 
-    def angle_to_tag(self, pos: Tuple[float, float, float]) -> float:
+    @staticmethod
+    def angle_to_tag(pos: Tuple[float, float, float]) -> float:
         deg = math.degrees(
                 math.atan2(pos[1], pos[0])
         )  # TODO - i think plus pi/2 bc this is respect to +x
@@ -204,27 +205,28 @@ class AprilTagModule:
 
         return deg
 
-    def H_inv(self, H: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def h_inv(h: np.ndarray) -> np.ndarray:
         """
         A method to efficiently compute the inverse of a homogeneous transformation
         matrix. Reference: http://vr.cs.uiuc.edu/node81.html
         """
 
-        T, R, Z, S = t3d.affines.decompose44(H)
+        t, r, z, s = t3d.affines.decompose44(h)
 
-        R_t = np.transpose(R)
-        H_rot = t3d.affines.compose(
+        r_t = np.transpose(r)
+        h_rot = t3d.affines.compose(
                 [0, 0, 0],
-                R_t,
+                r_t,
                 [1, 1, 1],
         )
-        H_tran = t3d.affines.compose(
-                [-1 * T[0], -1 * T[1], -1 * T[2]],
+        h_tran = t3d.affines.compose(
+                [-1 * t[0], -1 * t[1], -1 * t[2]],
                 np.eye(3),
                 [1, 1, 1],
         )
 
-        return H_rot.dot(H_tran)
+        return h_rot.dot(h_tran)
 
     def handle_tag(
             self, tag: AvrApriltagsRawTags
@@ -246,26 +248,26 @@ class AprilTagModule:
 
         tag_rot = np.asarray(tag["rotation"])
         rpy = t3d.euler.mat2euler(tag_rot)
-        R = t3d.euler.euler2mat(0, 0, rpy[2], axes="rxyz")
-        H_tag_cam = t3d.affines.compose(
+        r = t3d.euler.euler2mat(0, 0, rpy[2], axes="rxyz")
+        h_tag_cam = t3d.affines.compose(
                 [tag["pos"]["x"] * 100, tag["pos"]["y"] * 100, tag["pos"]["z"] * 100],
-                R,
+                r,
                 [1, 1, 1],
         )
-        T, R, Z, S = t3d.affines.decompose44(H_tag_cam)
+        t, r, z, s = t3d.affines.decompose44(h_tag_cam)
 
         name = f"tag_{tag_id}"
-        H_to_from = f"H_{name}_cam"
-        self.tm[H_to_from] = H_tag_cam
+        h_to_from = f"H_{name}_cam"
+        self.tm[h_to_from] = h_tag_cam
 
         # H_cam_tag = np.linalg.inv(H_tag_cam)
-        H_cam_tag = self.H_inv(H_tag_cam)
+        h_cam_tag = self.h_inv(h_tag_cam)
 
-        H_aerobody_tag = H_cam_tag.dot(self.tm["H_aeroBody_cam"])
+        h_aerobody_tag = h_cam_tag.dot(self.tm["H_aeroBody_cam"])
 
-        T2, R2, Z2, S2 = t3d.affines.decompose44(H_aerobody_tag)
-        rpy = t3d.euler.mat2euler(R2)
-        pos_rel: Tuple[float, float, float] = T2  # type: ignore
+        t2, r2, z2, s2 = t3d.affines.decompose44(h_aerobody_tag)
+        rpy = t3d.euler.mat2euler(r2)
+        pos_rel: Tuple[float, float, float] = t2  # type: ignore
 
         horizontal_distance: float = np.linalg.norm([pos_rel[0], pos_rel[1]])  # type: ignore
         vertical_distance = abs(pos_rel[2])
@@ -279,10 +281,10 @@ class AprilTagModule:
 
         # if we have a location definition for the visible tag
         if str(tag["id"]) in self.config["tag_truth"].keys():
-            H_cam_aeroRef = self.tm[f"H_{name}_aeroRef"].dot(H_cam_tag)
-            H_aeroBody_aeroRef = H_cam_aeroRef.dot(self.tm["H_aeroBody_cam"])
+            h_cam_aero_ref = self.tm[f"H_{name}_aeroRef"].dot(h_cam_tag)
+            h_aero_body_aero_ref = h_cam_aero_ref.dot(self.tm["H_aeroBody_cam"])
 
-            pos_world, R, Z, S = t3d.affines.decompose44(H_aeroBody_aeroRef)
+            pos_world, r, z, s = t3d.affines.decompose44(h_aero_body_aero_ref)
 
             return (
                 tag_id,

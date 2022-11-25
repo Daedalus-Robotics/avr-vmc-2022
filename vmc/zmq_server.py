@@ -45,7 +45,7 @@ class ZMQServer:
         for topic in self.topic_map:
             self.sub_socket.subscribe(topic)
 
-        self.sub_recv_thread = Thread(target = self._recv_loop, daemon = True)
+        self.sub_recv_thread = Thread(target=self._recv_loop, daemon=True)
         self.running = False
         self.running_barrier = Barrier(2)
 

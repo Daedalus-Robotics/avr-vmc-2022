@@ -136,7 +136,8 @@ class CameraCoordinateTransformation:
         # noinspection SpellCheckingInspection
         logger.debug(f"TRACKCAM: Resync: Pos offset:{pos_offset}")
 
-        # build a translation matrix that corrects the difference between where the sensor thinks we are and were our reference thinks we are
+        # build a translation matrix that corrects the difference between where the sensor thinks we are and were our
+        # reference thinks we are
         # noinspection PyPep8Naming
         H_aeroRefSync_aeroRef = t3d.affines.compose(
                 pos_offset, H_rot_correction[:3, :3], [1, 1, 1]

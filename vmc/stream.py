@@ -6,7 +6,6 @@ DEFAULT_PARAMS = (int(cv2.IMWRITE_JPEG_QUALITY), 90)
 
 
 def image_resize(image: np.ndarray, width: int = None, height: int = None, inter: int = cv2.INTER_AREA) -> np.ndarray:
-    dim = None
     (h, w) = image.shape[:2]
 
     if width is None and height is None:
@@ -20,7 +19,7 @@ def image_resize(image: np.ndarray, width: int = None, height: int = None, inter
         r = width / float(w)
         dim = (width, int(h * r))
 
-    resized = cv2.resize(image, dim, interpolation = inter)
+    resized = cv2.resize(image, dim, interpolation=inter)
     return resized
 
 
