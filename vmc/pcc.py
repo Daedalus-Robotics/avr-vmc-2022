@@ -1,4 +1,3 @@
-import atexit
 import ctypes
 import os
 import queue
@@ -79,7 +78,7 @@ class PeripheralControlComputer:
     def begin(self) -> None:
         self.shutdown = False
         if not (self.port_thread is not None and self.port_thread.is_alive()):
-            self.port_thread = Thread(target = self._port_loop, daemon = True)
+            self.port_thread = Thread(target=self._port_loop, daemon=True)
             self.port_thread.start()
 
     def end(self) -> None:
@@ -140,7 +139,7 @@ class PeripheralControlComputer:
             if enable_queueing:
                 try:
                     logger.debug("PCC not connected, adding to queue")
-                    self.command_queue.put(data, block = False, timeout = 0)
+                    self.command_queue.put(data, block=False, timeout=0)
                 except queue.Full:
                     logger.warning("PCC write queue full")
                 return False
@@ -152,7 +151,7 @@ class PeripheralControlComputer:
             count = 0
             while not self.command_queue.empty():
                 try:
-                    data = self.command_queue.get(block = False, timeout = 0)
+                    data = self.command_queue.get(block=False, timeout=0)
                     self.dev.write(data)
                     count += 1
                 except queue.Empty:
@@ -364,7 +363,7 @@ class PeripheralControlComputer:
         data = self._construct_payload(command, length)
 
         logger.debug(f"Resetting the PCC: {data}")
-        self._send(data, enable_queueing = False)
+        self._send(data, enable_queueing=False)
 
     def check_servo_controller(self) -> None:
         command = self.commands["CHECK_SERVO_CONTROLLER"]
@@ -461,10 +460,10 @@ class PeripheralControlComputer:
 
 
 class PeripheralControlModule:
-    def __init__(self, pcc: PeripheralControlComputer):
+    def __init__(self, my_pcc: PeripheralControlComputer):
         super().__init__()
 
-        self.pcc = pcc
+        self.pcc = my_pcc
 
         self.client = MQTTClient.get()
 
@@ -487,12 +486,12 @@ class PeripheralControlModule:
 
     def set_base_color(self, payload: AvrPcmSetBaseColorPayload) -> None:
         wrgb = payload["wrgb"]
-        self.pcc.set_base_color(wrgb = list(wrgb))
+        self.pcc.set_base_color(wrgb=list(wrgb))
 
     def set_temp_color(self, payload: AvrPcmSetTempColorPayload) -> None:
         wrgb = payload["wrgb"]
         length = payload.get("time", 0.5)  # default of 0.5 seconds
-        self.pcc.set_temp_color(wrgb = list(wrgb), length = length)
+        self.pcc.set_temp_color(wrgb=list(wrgb), length=length)
 
     def set_servo_open_close(self, payload: AvrPcmSetServoOpenClosePayload) -> None:
         servo = payload["servo"]

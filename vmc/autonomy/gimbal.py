@@ -1,12 +1,12 @@
 import time
 from threading import Barrier, BrokenBarrierError
 
+from loguru import logger
+
 from .. import utils
 from ..mqtt_client import MQTTClient
 from ..pcc import PeripheralControlComputer
 from ..thermal import ThermalCamera
-
-from loguru import logger
 
 SERVO_RANGE = 180
 CAMERA_FOV = 80
@@ -44,31 +44,31 @@ class Gimbal:
         self.last_x: int | None = None
         self.last_y: int | None = None
 
-        self.client.register_callback("avr/gimbal/disable", lambda: self.disable(), is_json = False, use_args = False)
-        self.client.register_callback("avr/gimbal/center", lambda: self.center(), is_json = False, use_args = False)
+        self.client.register_callback("avr/gimbal/disable", lambda: self.disable(), is_json=False, use_args=False)
+        self.client.register_callback("avr/gimbal/center", lambda: self.center(), is_json=False, use_args=False)
         self.client.register_callback(
                 "avr/gimbal/pos",
                 lambda payload: self.set_pos(payload.get("x", X_CENTER), payload.get("y", Y_CENTER)),
-                is_json = True,
-                use_args = True
+                is_json=True,
+                use_args=True
         )
         self.client.register_callback(
                 "avr/gimbal/move",
                 lambda payload: self.move(payload.get("x", 0), payload.get("y", 0)),
-                is_json = True,
-                use_args = True
+                is_json=True,
+                use_args=True
         )
         self.client.register_callback(
                 "avr/gimbal/trigger_aim",
                 lambda: self.trigger_auto_aim(),
-                is_json = False,
-                use_args = False
+                is_json=False,
+                use_args=False
         )
         self.client.register_callback(
                 "avr/gimbal/auto_aim",
                 lambda payload: self.set_auto_aim(payload.get("enabled", False)),
-                is_json = True,
-                use_args = True
+                is_json=True,
+                use_args=True
         )
 
         self.running = False

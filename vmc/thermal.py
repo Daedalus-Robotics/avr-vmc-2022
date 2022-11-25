@@ -1,21 +1,19 @@
 import math
 import time
-from threading import Barrier, BrokenBarrierError, Thread
+from threading import Barrier, Thread
 from typing import List
 
+import adafruit_amg88xx
+import board
 import cv2
 import numpy as np
 from colour import Color
 from loguru import logger
-
-from .mqtt_client import MQTTClient
-from . import stream
-from .utils import constrain, map
-
 from scipy.interpolate import griddata
 
-import board
-import adafruit_amg88xx
+from . import stream
+from .mqtt_client import MQTTClient
+from .utils import constrain, map
 
 VIEW_SIZE = 30
 CAMERA_SIZE = 8
@@ -52,7 +50,7 @@ class ThermalCamera:
 
         self.running = True
 
-        Thread(target = self._update_loop, daemon = True).start()
+        Thread(target=self._update_loop, daemon=True).start()
 
     def close(self) -> None:
         self.running = False
@@ -89,7 +87,7 @@ class ThermalCamera:
         # cv2.circle(pixels, (x, y), radius, 78, -1)
         return pixels
 
-    def get_frame(self, color = False) -> np.ndarray:
+    def get_frame(self, color=False) -> np.ndarray:
         return self.bgr_frame if color else self.hsv_frame
 
     def update_frame(self) -> None:
@@ -104,7 +102,7 @@ class ThermalCamera:
                 POINTS,
                 rotated_float_pixels,
                 (GRID_X, GRID_Y),
-                method = "cubic",
+                method="cubic",
         )
 
         for ix, row in enumerate(bicubic):
@@ -137,7 +135,7 @@ class ThermalCamera:
 
     def _stream(self) -> None:
         if self.client.is_connected:
-            frame = self.get_frame(color = True)
+            frame = self.get_frame(color=True)
             frame = stream.image_resize(frame, 300)
             # frame = self.detector.overlay(frame)
             success, encoded_frame = stream.encode_frame(frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
@@ -290,6 +288,7 @@ class Detector:
             return x_avg, y_avg
         else:
             return None
+
 
 if __name__ == "__main__":
     thermal = ThermalCamera()

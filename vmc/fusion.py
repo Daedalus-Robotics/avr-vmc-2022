@@ -23,12 +23,12 @@ from bell.avr.mqtt.payloads import (
     AvrVioResyncPayload,
     AvrVioVelocityNedPayload,
 )
-from bell.avr.utils.decorators import run_forever, try_except
+from bell.avr.utils.decorators import try_except
 from loguru import logger
 
+from .fcm.fcm import FlightControlModule
 from .mqtt_client import MQTTClient
 from .status import Status
-from .fcm.fcm import FlightControlModule
 from .vio.vio import VIOModule
 
 MSG_INTERVAL = 1
@@ -113,7 +113,7 @@ class FusionModule:
         except BrokenBarrierError:
             pass
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def local_to_geo(self, payload: AvrFusionPositionNedPayload) -> None:
         """
         Callback for the fusion/pos topic. This method calculates the
@@ -126,11 +126,11 @@ class FusionModule:
                 self.config["origin"]["lat"],  # Origin lat
                 self.config["origin"]["lon"],  # Origin lon
                 self.config["origin"]["alt"],  # Origin alt
-                deg = True,
+                deg=True,
         )
 
         geo_update = AvrFusionGeoPayload(
-                lat = float(lla[0]), lon = float(lla[1]), alt = float(lla[2])
+                lat=float(lla[0]), lon=float(lla[1]), alt=float(lla[2])
         )
 
         ss = time.time()
@@ -141,7 +141,7 @@ class FusionModule:
             self.last_geo = ss
         self.fusion_geo = geo_update
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def fuse_pos(self, payload: AvrVioPositionNedPayload) -> None:
         """
         Callback for receiving pos data in NED reference frame from VIO and
@@ -152,7 +152,7 @@ class FusionModule:
         """
 
         pos_update = AvrFusionPositionNedPayload(
-                n = payload["n"], e = payload["e"], d = payload["d"]
+                n=payload["n"], e=payload["e"], d=payload["d"]
         )
 
         ss = time.time()
@@ -163,7 +163,7 @@ class FusionModule:
             self.last_pos_ned = ss
         self.fusion_pos_ned = pos_update
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def fuse_vel(self, payload: AvrVioVelocityNedPayload) -> None:
         """
         Callback for receiving vel data in NED reference frame from VIO and
@@ -177,7 +177,7 @@ class FusionModule:
 
         # forward ned velocity message
         vmc_vel_update = AvrFusionVelocityNedPayload(
-                Vn = payload["n"], Ve = payload["e"], Vd = payload["d"]
+                Vn=payload["n"], Ve=payload["e"], Vd=payload["d"]
         )
 
         ss = time.time()
@@ -192,7 +192,7 @@ class FusionModule:
 
         # compute groundspeed
         gs = np.linalg.norm([payload["n"], payload["e"]])
-        groundspeed_update = AvrFusionGroundspeedPayload(groundspeed = float(gs))
+        groundspeed_update = AvrFusionGroundspeedPayload(groundspeed=float(gs))
 
         ss = time.time()
         timesince = ss - self.last_groundspeed
@@ -212,7 +212,7 @@ class FusionModule:
 
             # rad to deg
             course = math.degrees(course)
-            course_update = AvrFusionCoursePayload(course = course)
+            course_update = AvrFusionCoursePayload(course=course)
 
             ss = time.time()
             timesince = ss - self.last_course
@@ -224,7 +224,7 @@ class FusionModule:
 
         m_per_s_2_ft_per_min = 196.85
         climb_rate_update = AvrFusionClimbratePayload(
-                climb_rate_fps = -1 * payload["d"] * m_per_s_2_ft_per_min
+                climb_rate_fps=-1 * payload["d"] * m_per_s_2_ft_per_min
         )
 
         ss = time.time()
@@ -235,7 +235,7 @@ class FusionModule:
             self.last_climbrate = ss
         self.fusion_climbrate = climb_rate_update
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def fuse_att_quat(self, payload: AvrVioOrientationQuatPayload) -> None:
         """
         Callback for receiving quaternion att data in NED reference frame
@@ -245,7 +245,7 @@ class FusionModule:
         the message onto the fusion topic.
         """
         quat_update = AvrFusionAttitudeQuatPayload(
-                w = payload["w"], x = payload["x"], y = payload["y"], z = payload["z"]
+                w=payload["w"], x=payload["x"], y=payload["y"], z=payload["z"]
         )
 
         ss = time.time()
@@ -256,7 +256,7 @@ class FusionModule:
             self.last_attitude_quat = ss
         self.fusion_attitude_quat = quat_update
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def fuse_att_euler(self, payload: AvrVioOrientationEulPayload) -> None:
         """
         Callback for receiving euler att data in NED reference frame from VIO and
@@ -266,7 +266,7 @@ class FusionModule:
         the message onto the fusion topic.
         """
         euler_update = AvrFusionAttitudeEulerPayload(
-                psi = payload["psi"], theta = payload["theta"], phi = payload["phi"]
+                psi=payload["psi"], theta=payload["theta"], phi=payload["phi"]
         )
 
         ss = time.time()
@@ -277,7 +277,7 @@ class FusionModule:
             self.last_attitude_euler = ss
         self.fusion_attitude_euler = euler_update
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def fuse_att_heading(self, payload: AvrVioHeadingPayload) -> None:
         """
         Callback for receiving heading att data in NED reference frame from VIO and
@@ -286,7 +286,7 @@ class FusionModule:
         Avr doesn't have sophisticated fusion yet, so this just re-routes
         the message onto the fusion topic.
         """
-        heading_update = AvrFusionAttitudeHeadingPayload(heading = payload["degrees"])
+        heading_update = AvrFusionAttitudeHeadingPayload(heading=payload["degrees"])
 
         ss = time.time()
         timesince = ss - self.last_attitude_heading
@@ -308,10 +308,10 @@ class FusionModule:
         ):
             # self.message_cache["avr/fusion/course"] =
             self.fusion_course = AvrFusionCoursePayload(
-                    course = payload["degrees"]
+                    course=payload["degrees"]
             )
 
-    @try_except(reraise = False)
+    @try_except(reraise=False)
     def assemble_hil_gps_message(self) -> None:
         """
         This code takes the pos data from fusion and formats it into a special
@@ -383,28 +383,28 @@ class FusionModule:
                 continue
 
             hil_gps_update = AvrFusionHilGpsPayload(
-                    time_usec = int(time.time() * 1000000),
-                    fix_type = int(self.config["hil_gps_constants"]["fix_type"]),  # 3 - 3D fix
-                    lat = lat,
-                    lon = lon,
-                    alt = int(
+                    time_usec=int(time.time() * 1000000),
+                    fix_type=int(self.config["hil_gps_constants"]["fix_type"]),  # 3 - 3D fix
+                    lat=lat,
+                    lon=lon,
+                    alt=int(
                             # self.message_cache["avr/fusion/geo"]["alt"] * 1000
                             self.fusion_geo["alt"] * 1000
                     ),  # convert m to mm
-                    eph = int(self.config["hil_gps_constants"]["eph"]),  # cm
-                    epv = int(self.config["hil_gps_constants"]["epv"]),  # cm
-                    vel = gs,
+                    eph=int(self.config["hil_gps_constants"]["eph"]),  # cm
+                    epv=int(self.config["hil_gps_constants"]["epv"]),  # cm
+                    vel=gs,
                     # vn = int(self.message_cache["avr/fusion/velocity/ned"]["Vn"]),
                     # ve = int(self.message_cache["avr/fusion/velocity/ned"]["Ve"]),
                     # vd = int(self.message_cache["avr/fusion/velocity/ned"]["Vd"]),
-                    vn = int(self.fusion_vel_ned["Vn"]),
-                    ve = int(self.fusion_vel_ned["Ve"]),
-                    vd = int(self.fusion_vel_ned["Vd"]),
-                    cog = int(crs * 100),
-                    satellites_visible = int(
+                    vn=int(self.fusion_vel_ned["Vn"]),
+                    ve=int(self.fusion_vel_ned["Ve"]),
+                    vd=int(self.fusion_vel_ned["Vd"]),
+                    cog=int(crs * 100),
+                    satellites_visible=int(
                             self.config["hil_gps_constants"]["satellites_visible"]
                     ),
-                    heading = heading,
+                    heading=heading,
             )
             # self.client.send_message("avr/fusion/hil_gps", hil_gps_update)
             self.fcm.gps_fcc.hilgps_msg_handler(hil_gps_update)
@@ -415,7 +415,7 @@ class FusionModule:
         except BrokenBarrierError:
             pass
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def on_apriltag_message(self, msg: AvrApriltagsSelectedPayload) -> None:
         if (
                 # "avr/fusion/position/ned" not in self.message_cache
@@ -472,10 +472,10 @@ class FusionModule:
                 at_ned["d"] = cam_ned["d"]
 
             resync = AvrVioResyncPayload(
-                    n = at_ned["n"],
-                    e = at_ned["e"],
-                    d = at_ned["d"],
-                    heading = at_heading,
+                    n=at_ned["n"],
+                    e=at_ned["e"],
+                    d=at_ned["d"],
+                    heading=at_heading,
             )
             # noinspection PyTypeChecker
             self.client.send_message("avr/vio/resync", resync)

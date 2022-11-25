@@ -4,7 +4,6 @@ import numpy as np
 # Getting pyzed installed in a dev environment is very painful unless
 # you already have CUDA and the ZED SDK installed.
 import pyzed.sl as sl  # type: ignore
-import pyzed
 from bell.avr.utils.decorators import try_except
 from loguru import logger
 
@@ -34,14 +33,14 @@ class ZEDCamera(object):
     def __init__(self) -> None:
         self.zed: sl.Camera | None = None
         self.tracking_parameters = None
-        self.zed_pose = None
-        self.zed_sensors = None
+        self.zed_pose: sl.Pose | None = None
+        self.zed_sensors: sl.SensorsData | None = None
         self.last_pos = None
         self.runtime_parameters = None
         self.last_time = None
-        self.image_zed = None
+        self.image_zed: sl.Mat | None = None
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def get_frames(self) -> tuple[bool, np.ndarray | None, np.ndarray | None, np.ndarray | None]:
         if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
             image_right: np.ndarray | None
@@ -63,7 +62,7 @@ class ZEDCamera(object):
             return True, image_right, image_left, image_depth
         return False, None, None, None
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def setup(self) -> None:
         # Create a Camera object
         self.zed = sl.Camera()
@@ -92,7 +91,7 @@ class ZEDCamera(object):
             sl.Transform()
         )  # First create a Transform object for TrackingParameters object
         self.tracking_parameters = sl.PositionalTrackingParameters(
-                _init_pos = py_transform
+                _init_pos=py_transform
         )
         self.tracking_parameters.set_floor_as_origin = True
         err = self.zed.enable_positional_tracking(self.tracking_parameters)
@@ -119,7 +118,7 @@ class ZEDCamera(object):
                 # sl.MAT_TYPE.U8_C4
         )
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def get_pipe_data(self) -> Optional[ZedPipeData]:
         if self.zed.grab(self.runtime_parameters) != sl.ERROR_CODE.SUCCESS:
             logger.warning("ZED Camera Grab Failed")
@@ -165,11 +164,11 @@ class ZEDCamera(object):
         rotation = o.get()
 
         # assemble return value
-        translation = ZedPipeDataTranslation(x = tx, y = ty, z = tz)
+        translation = ZedPipeDataTranslation(x=tx, y=ty, z=tz)
 
         return ZedPipeData(
-                rotation = rotation,
-                translation = translation,
-                velocity = velocity,
-                tracker_confidence = self.zed_pose.pose_confidence,
+                rotation=rotation,
+                translation=translation,
+                velocity=velocity,
+                tracker_confidence=self.zed_pose.pose_confidence,
         )

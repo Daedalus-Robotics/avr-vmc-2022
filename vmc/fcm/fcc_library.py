@@ -26,6 +26,7 @@ from bell.avr.utils.timing import rate_limit
 from loguru import logger
 from mavsdk.action import ActionError
 from mavsdk.offboard import VelocityBodyYawspeed, VelocityNedYaw
+from mavsdk.telemetry import FixType
 from pymavlink import mavutil
 
 from .fcc_mision_api import MissionAPI
@@ -35,7 +36,7 @@ from ..status import Status
 
 class FCMMQTTModule:
     def __init__(self) -> None:
-        self.client: MQTTClient | None = None
+        self.client: MQTTClient = MQTTClient.get()
 
     @try_except()
     def _publish_event(self, name: str, payload: str = "") -> None:
@@ -43,8 +44,8 @@ class FCMMQTTModule:
         Create and publish state machine event.
         """
         event = AvrFcmEventsPayload(
-                name = name,
-                payload = payload,
+                name=name,
+                payload=payload,
         )
         self.client.send_message("avr/fcm/events", event)
 
@@ -59,8 +60,6 @@ class DispatcherBusy(Exception):
 class DispatcherManager(FCMMQTTModule):
     def __init__(self) -> None:
         super().__init__()
-
-        self.client = MQTTClient.get()
 
         self.currently_running_task = None
         self.timeout = 10
@@ -94,7 +93,7 @@ class DispatcherManager(FCMMQTTModule):
         """
         # noinspection PyBroadException
         try:
-            await asyncio.wait_for(task(**payload), timeout = self.timeout)
+            await asyncio.wait_for(task(**payload), timeout=self.timeout)
             self._publish_event(f"request_{name}_completed_event")
             self.currently_running_task = None
 
@@ -117,8 +116,8 @@ class DispatcherManager(FCMMQTTModule):
         Create and publish state machine event.
         """
         event = AvrFcmEventsPayload(
-                name = name,
-                payload = payload,
+                name=name,
+                payload=payload,
         )
         self.client.send_message("avr/fcm/events", event)
 
@@ -148,10 +147,11 @@ class FlightControlComputer(FCMMQTTModule):
         self.is_armed: bool = False
         self.fcc_mode = "UNKNOWN"
         self.heading = 0.0
+        self.position_state: tuple[int, FixType | None] = (0, None)
 
         self.telemetry_tasks_future: Future | None = None
 
-    @try_except(reraise = False)
+    @try_except(reraise=False)
     def close(self) -> None:
         if self.telemetry_tasks_future is not None:
             self.telemetry_tasks_future.cancel()
@@ -167,7 +167,7 @@ class FlightControlComputer(FCMMQTTModule):
         # logging.basicConfig(level=logging.DEBUG)
 
         # mavsdk does not support dns
-        await self.drone.connect(system_address = "udp://0.0.0.0:14541")
+        await self.drone.connect(system_address="udp://0.0.0.0:14541")
 
         logger.success("Connected to the FCC")
 
@@ -291,8 +291,8 @@ class FlightControlComputer(FCMMQTTModule):
         logger.debug("battery_telemetry loop started")
         async for battery in self.drone.telemetry.battery():
             update = AvrFcmBatteryPayload(
-                    voltage = battery.voltage_v,
-                    soc = battery.remaining_percent * 100.0,
+                    voltage=battery.voltage_v,
+                    soc=battery.remaining_percent * 100.0,
             )
 
             self.client.send_message("avr/fcm/battery", update)
@@ -325,8 +325,8 @@ class FlightControlComputer(FCMMQTTModule):
             self.is_armed = armed
 
             update = AvrFcmStatusPayload(
-                    armed = armed,
-                    mode = str(self.fcc_mode),
+                    armed=armed,
+                    mode=str(self.fcc_mode),
             )
 
             self.client.send_message("avr/fcm/status", update)
@@ -386,8 +386,8 @@ class FlightControlComputer(FCMMQTTModule):
         async for mode in self.drone.telemetry.flight_mode():
 
             update = AvrFcmStatusPayload(
-                    mode = str(mode),
-                    armed = self.is_armed,
+                    mode=str(mode),
+                    armed=self.is_armed,
             )
 
             self.client.send_message("avr/fcm/status", update)
@@ -412,7 +412,7 @@ class FlightControlComputer(FCMMQTTModule):
             e = position.position.east_m
             d = position.position.down_m
 
-            update = AvrFcmLocationLocalPayload(dX = n, dY = e, dZ = d)
+            update = AvrFcmLocationLocalPayload(dX=n, dY=e, dZ=d)
 
             self.client.send_message("avr/fcm/location/local", update)
 
@@ -424,10 +424,10 @@ class FlightControlComputer(FCMMQTTModule):
         logger.debug("position_lla telemetry loop started")
         async for position in self.drone.telemetry.position():
             update = AvrFcmLocationGlobalPayload(
-                    lat = position.latitude_deg,
-                    lon = position.longitude_deg,
-                    alt = position.relative_altitude_m,
-                    hdg = self.heading,
+                    lat=position.latitude_deg,
+                    lon=position.longitude_deg,
+                    alt=position.relative_altitude_m,
+                    hdg=self.heading,
             )
 
             self.client.send_message("avr/fcm/location/global", update)
@@ -440,9 +440,9 @@ class FlightControlComputer(FCMMQTTModule):
         logger.debug("home_lla telemetry loop started")
         async for home_position in self.drone.telemetry.home():
             update = AvrFcmLocationHomePayload(
-                    lat = home_position.latitude_deg,
-                    lon = home_position.longitude_deg,
-                    alt = home_position.relative_altitude_m,
+                    lat=home_position.latitude_deg,
+                    lon=home_position.longitude_deg,
+                    alt=home_position.relative_altitude_m,
             )
 
             self.client.send_message("avr/fcm/location/home", update)
@@ -461,9 +461,9 @@ class FlightControlComputer(FCMMQTTModule):
 
             # do any necessary wrapping here
             update = AvrFcmAttitudeEulerPayload(
-                    roll = psi,
-                    pitch = theta,
-                    yaw = phi,
+                    roll=psi,
+                    pitch=theta,
+                    yaw=phi,
             )
 
             heading = (2 * math.pi) + phi if phi < 0 else phi
@@ -474,7 +474,7 @@ class FlightControlComputer(FCMMQTTModule):
             # publish telemetry every tenth of a second
             rate_limit(
                     lambda: self.client.send_message("avr/fcm/attitude/euler", update),
-                    frequency = 10,
+                    frequency=10,
             )
 
     @async_try_except()
@@ -486,9 +486,9 @@ class FlightControlComputer(FCMMQTTModule):
         logger.debug("velocity_ned telemetry loop started")
         async for velocity in self.drone.telemetry.velocity_ned():
             update = AvrFcmVelocityPayload(
-                    vX = velocity.north_m_s,
-                    vY = velocity.east_m_s,
-                    vZ = velocity.down_m_s,
+                    vX=velocity.north_m_s,
+                    vY=velocity.east_m_s,
+                    vZ=velocity.down_m_s,
             )
 
             self.client.send_message("avr/fcm/velocity", update)
@@ -501,9 +501,11 @@ class FlightControlComputer(FCMMQTTModule):
         logger.debug("gps_info telemetry loop started")
         async for gps_info in self.drone.telemetry.gps_info():
             update = AvrFcmGpsInfoPayload(
-                    num_satellites = gps_info.num_satellites,
-                    fix_type = str(gps_info.fix_type),
+                    num_satellites=gps_info.num_satellites,
+                    fix_type=str(gps_info.fix_type),
             )
+
+            self.position_state = (gps_info.num_satellites, gps_info.fix_type)
 
             self.client.send_message("avr/fcm/gps_info", update)
 
@@ -553,7 +555,7 @@ class FlightControlComputer(FCMMQTTModule):
 
             except DispatcherBusy:
                 logger.info("I'm busy running another task, try again later")
-                self._publish_event("fcc_busy_event", payload = action["name"])
+                self._publish_event("fcc_busy_event", payload=action["name"])
 
             except queue.Empty:
                 await asyncio.sleep(0.1)
@@ -601,7 +603,7 @@ class FlightControlComputer(FCMMQTTModule):
             await asyncio.sleep(20)
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_arm(self, **kwargs) -> None:
         """
         Sets the drone to an armed state.
@@ -610,7 +612,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.simple_action_executor(self.drone.action.arm, "arm")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_disarm(self, **kwargs) -> None:
         """
         Sets the drone to a disarmed state.
@@ -619,7 +621,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.simple_action_executor(self.drone.action.disarm, "disarm")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_kill(self, **kwargs) -> None:
         """
         Sets the drone to a kill state. This will forcefully shut off the drone
@@ -629,7 +631,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.simple_action_executor(self.drone.action.kill, "kill")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_land(self, **kwargs) -> None:
         """
         Commands the drone to land at the current position.
@@ -638,7 +640,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.simple_action_executor(self.drone.action.land, "land_cmd")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_reboot(self, **kwargs) -> None:
         """
         Commands the drone computer to reboot.
@@ -647,7 +649,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.simple_action_executor(self.drone.action.reboot, "reboot")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_takeoff(self, takeoff_alt: float, **kwargs) -> None:
         """
         Commands the drone to take off to the given altitude.
@@ -660,7 +662,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.simple_action_executor(self.drone.action.takeoff, "takeoff")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def upload_mission(self, waypoints: List[dict], **kwargs) -> None:
         """
         Calls the mission api to upload a mission to the fcc.
@@ -669,7 +671,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.mission_api.build_and_upload(waypoints)
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def begin_mission(self, **kwargs) -> None:
         """
         Arms the drone and calls the mission api to start a mission.
@@ -684,7 +686,7 @@ class FlightControlComputer(FCMMQTTModule):
             self._publish_event("mission_starting_from_air_event")
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def pause_mission(self, **kwargs) -> None:
         """
         Calls the mission api to pause a mission to the fcc.
@@ -693,7 +695,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.mission_api.pause()
 
     # noinspection PyUnusedLocal
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def resume_mission(self, **kwargs) -> None:
         """
         Calls the mission api to resume a mission to the fcc.
@@ -752,7 +754,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.async_queue_action(
                 self.offboard_ned_queue,
                 process_offboard_ned,
-                frequency = 20,
+                frequency=20,
         )
 
     async def offboard_body(self) -> None:
@@ -779,7 +781,7 @@ class FlightControlComputer(FCMMQTTModule):
         await self.async_queue_action(
                 self.offboard_body_queue,
                 process_offboard_body,
-                frequency = 20,
+                frequency=20,
         )
 
     # endregion ###############################################################
@@ -827,7 +829,7 @@ class PyMAVLinkAgent:
                 2, 2, 2, 0, 0, 0, 0, -1
         )
 
-    @try_except(reraise = True)
+    @try_except(reraise=True)
     def hilgps_msg_handler(self, payload: AvrFusionHilGpsPayload) -> None:
         """
         Handle a HIL_GPS message.
@@ -855,6 +857,6 @@ class PyMAVLinkAgent:
         # publish stats every second
         rate_limit(
                 lambda: self.client.send_message("avr/fcm/hil_gps_stats",
-                                                 AvrFcmHilGpsStatsPayload(num_frames = self.num_frames)),
-                frequency = 1,
+                                                 AvrFcmHilGpsStatsPayload(num_frames=self.num_frames)),
+                frequency=1,
         )

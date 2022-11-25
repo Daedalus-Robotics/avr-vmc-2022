@@ -60,7 +60,7 @@ class CameraCoordinateTransformation:
                         cam_rpy[0],
                         cam_rpy[1],
                         cam_rpy[2],
-                        axes = "rxyz",
+                        axes="rxyz",
                 ),
                 [1, 1, 1],
         )
@@ -77,7 +77,7 @@ class CameraCoordinateTransformation:
                         cam_rpy[0],
                         cam_rpy[1],
                         cam_rpy[2],
-                        axes = "rxyz",
+                        axes="rxyz",
                 ),
                 [1, 1, 1],
         )
@@ -102,9 +102,10 @@ class CameraCoordinateTransformation:
         H = self.tm["H_aeroRef_aeroBody"]
         # noinspection PyPep8Naming
         T, R, Z, S = t3d.affines.decompose44(H)
-        eul = t3d.euler.mat2euler(R, axes = "rxyz")
+        eul = t3d.euler.mat2euler(R, axes="rxyz")
 
         # Find the heading offset...
+        # noinspection PyUnresolvedReferences
         heading = eul[2]
 
         # wrap heading in (0, 2*pi)
@@ -128,10 +129,11 @@ class CameraCoordinateTransformation:
         H = H_rot_correction.dot(H)
         # noinspection PyPep8Naming
         T, R, Z, S = t3d.affines.decompose44(H)
-        eul = t3d.euler.mat2euler(R, axes = "rxyz")
+        eul = t3d.euler.mat2euler(R, axes="rxyz")
 
         # Find the position offset
         pos_offset = [pos_ref["n"] - T[0], pos_ref["e"] - T[1], pos_ref["d"] - T[2]]
+        # noinspection SpellCheckingInspection
         logger.debug(f"TRACKCAM: Resync: Pos offset:{pos_offset}")
 
         # build a translation matrix that corrects the difference between where the sensor thinks we are and were our reference thinks we are
@@ -141,7 +143,8 @@ class CameraCoordinateTransformation:
         )
         self.tm["H_aeroRefSync_aeroRef"] = H_aeroRefSync_aeroRef
 
-    @try_except(reraise = False)
+    # noinspection SpellCheckingInspection
+    @try_except(reraise=False)
     def transform_trackcamera_to_global_ned(
             self, data: CameraFrameData
     ) -> Tuple[
@@ -210,11 +213,12 @@ class CameraCoordinateTransformation:
 
         # noinspection PyPep8Naming
         T, R, Z, S = t3d.affines.decompose44(H_aeroRefSync_aeroBody)
-        eul = t3d.euler.mat2euler(R, axes = "rxyz")
+        eul = t3d.euler.mat2euler(R, axes="rxyz")
 
         # noinspection PyPep8Naming
         H_vel = self.tm["H_aeroRefSync_aeroRef"].dot(self.tm["H_aeroRef_TRACKCAMRef"])
 
         vel = tuple(np.transpose(H_vel.dot(velocity)))
 
+        # noinspection PyTypeChecker
         return T, vel, eul

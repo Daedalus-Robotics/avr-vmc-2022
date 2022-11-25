@@ -38,15 +38,15 @@ class Autonomy:
         self.apriltags = apriltags
 
         self.gimbal = Gimbal(self.pcc, 2, 3, self.thermal)
-        self.gimbal_thread = Thread(target = lambda: self.gimbal.run(), daemon = True)
+        self.gimbal_thread = Thread(target=lambda: self.gimbal.run(), daemon=True)
 
         self.water_drop = WaterDrop(self.pcc, self.apriltags, self.mavlink_system, 1)
-        self.water_drop_thread = Thread(target = lambda: asyncio.run(self.water_drop.run()), daemon = True)
+        self.water_drop_thread = Thread(target=lambda: asyncio.run(self.water_drop.run()), daemon=True)
 
         self.running = False
         self.running_barrier = Barrier(2)
 
-        Thread(target = self._status_loop, daemon = True).start()
+        Thread(target=self._status_loop, daemon=True).start()
 
     def _status_loop(self) -> None:
         self.status.update_status("autonomy", False)

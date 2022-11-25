@@ -17,7 +17,7 @@ class MissionAPI:
         self.client = MQTTClient.get()
         self.drone = drone
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def set_geofence(
             self, min_lat: float, min_lon: float, max_lat: float, max_lon: float
     ) -> None:
@@ -42,7 +42,7 @@ class MissionAPI:
         ]
         await self.drone.geofence.upload_geofence(fence)
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def build(self, waypoints: List[dict]) -> List[MissionItem]:
         # sourcery skip: hoist-statement-from-loop, switch, use-assigned-variable
         """
@@ -114,26 +114,26 @@ class MissionAPI:
 
             mission_items.append(
                     MissionItem(
-                            seq = seq,
-                            frame = frame,
-                            command = command,
-                            current = current,
-                            autocontinue = autocontinue,
-                            param1 = param1,
-                            param2 = param2,
-                            param3 = param3,
-                            param4 = param4,
-                            x = x,
-                            y = y,
-                            z = z,
-                            mission_type = mission_type,
+                            seq=seq,
+                            frame=frame,
+                            command=command,
+                            current=current,
+                            autocontinue=autocontinue,
+                            param1=param1,
+                            param2=param2,
+                            param3=param3,
+                            param4=param4,
+                            x=x,
+                            y=y,
+                            z=z,
+                            mission_type=mission_type,
                     )
             )
 
         return mission_items
 
     # noinspection PyProtectedMember
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def upload(self, mission_items: List[MissionItem]) -> None:
         """
         Upload a given list of MissionItems to the drone.
@@ -150,7 +150,7 @@ class MissionAPI:
                     "mission_upload_failed_event", str(e._result.result_str)
             )
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def build_and_upload(self, waypoints: List[dict]) -> None:
         """
         Upload a list of waypoints (dict) to the done.
@@ -158,7 +158,7 @@ class MissionAPI:
         mission_plan = await self.build(waypoints)
         await self.upload(mission_plan)
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def download(self) -> List[MissionItem]:
         """
         Download the current mission from the drone as a list of MissionItems.
@@ -166,7 +166,7 @@ class MissionAPI:
         logger.info("Downloading mission plan from drone")
         return await self.download()
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def wait_for_finish(self) -> None:
         """
         Async blocking function that waits for the current mission to be finished.
@@ -185,7 +185,7 @@ class MissionAPI:
             if mission_progress.current == 0:
                 return
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def start(self) -> None:
         """
         Commands the drone to start the current mission.
@@ -195,7 +195,7 @@ class MissionAPI:
         logger.info("Sending start mission command")
         await self.drone.mission_raw.start_mission()
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def hold(self) -> None:
         """
         Commands the drone to hold the current mission.
@@ -203,7 +203,7 @@ class MissionAPI:
         logger.info("Sending pause mission command")
         await self.drone.mission_raw.pause_mission()
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def pause(self) -> None:
         """
         Commands the drone to pause the current mission.
@@ -211,7 +211,7 @@ class MissionAPI:
         logger.info("Sending pause mission command")
         await self.hold()
 
-    @async_try_except(reraise = True)
+    @async_try_except(reraise=True)
     async def resume(self) -> None:
         """
         Commands the drone to resume the paused mission.
@@ -225,7 +225,7 @@ class MissionAPI:
         Create and publish state machine event.
         """
         event = AvrFcmEventsPayload(
-                name = name,
-                payload = payload,
+                name=name,
+                payload=payload,
         )
         self.client.send_message("avr/fcm/events", event)

@@ -1,6 +1,6 @@
 import json
 import time
-from threading import Lock, Thread
+from threading import Lock
 from typing import Any, Callable
 
 from loguru import logger
@@ -25,7 +25,7 @@ class MQTTClient:
         self.port = port
         self.status = status
 
-        self.client = mqtt.Client(protocol = mqtt.MQTTv311)
+        self.client = mqtt.Client(protocol=mqtt.MQTTv311)
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
@@ -43,7 +43,7 @@ class MQTTClient:
     def connect(self) -> bool:
         if not self.is_connected:
             try:
-                self.client.connect(host = self.host, port = self.port, keepalive = 60)
+                self.client.connect(host=self.host, port=self.port, keepalive=60)
                 self.client.loop_start()
             except ConnectionRefusedError:
                 return False
@@ -62,7 +62,7 @@ class MQTTClient:
         with self.topic_map_lock:
             for topic, info in self.topic_map.items():
                 _, _, qos, options, properties, _ = info
-                self.client.subscribe(topic, qos = qos, options = options, properties = properties)
+                self.client.subscribe(topic, qos=qos, options=options, properties=properties)
                 logger.success(f"Subscribed to: {topic}")
 
     def _on_disconnect(self, _: mqtt.Client, __: Any, rc: int, ___: dict = None):
@@ -116,7 +116,7 @@ class MQTTClient:
             payload = json_payload
         try:
             if self.is_connected:
-                self.client.publish(topic, payload, qos = qos, retain = retain, properties = properties)
+                self.client.publish(topic, payload, qos=qos, retain=retain, properties=properties)
             else:
                 logger.warning("Can't publish. MQTT disconnected")
             return True
@@ -139,7 +139,7 @@ class MQTTClient:
                 self.topic_map[topic] = (callback, is_json, qos, options, properties, use_args)
                 return_val = True
                 if self._connected:
-                    self.client.subscribe(topic, qos = qos, options = options, properties = properties)
+                    self.client.subscribe(topic, qos=qos, options=options, properties=properties)
                     logger.success(f"Subscribed to: {topic}")
         return return_val
 

@@ -34,7 +34,7 @@ mqtt_client = MQTTClient.get("localhost", 1883)
 status_strip = StatusStrip(8)
 status_strip.pixels.brightness = 0.5
 status = Status(status_strip)
-status.register_status("mqtt", False, None, led_num = 0)
+status.register_status("mqtt", False, None, led_num=0)
 mqtt_client.status = status
 
 pcc: PeripheralControlComputer | None = None
@@ -154,8 +154,8 @@ async def main(start_modules: list[str]) -> None:
     mqtt_client.register_callback(
             "avr/shutdown",
             shutdown_vmc,
-            is_json = False,
-            use_args = False
+            is_json=False,
+            use_args=False
     )
 
     if "pcc" in start_modules:
@@ -195,13 +195,13 @@ async def main(start_modules: list[str]) -> None:
 
     if "mavsdk" in start_modules:
         logger.log("SETUP", "Setting up connection to mavP2P using mavsdk...")
-        mavlink_system = mavsdk.System(sysid = 141)
+        mavlink_system = mavsdk.System(sysid=141)
     if "mavutil" in start_modules:
         logger.log("SETUP", "Setting up connection to mavP2P using mavutil...")
         pymavlink_connection = mavutil.mavlink_connection(
                 "udpin:0.0.0.0:14542",
-                source_system = 142,
-                dialect = "bell"
+                source_system=142,
+                dialect="bell"
         )
         mqtt_client.register_callback("avr/arm", set_armed, is_json = True, use_args = True, qos = 2)
 
@@ -228,7 +228,7 @@ async def main(start_modules: list[str]) -> None:
         fusion = FusionModule(status, vio, fcm)
 
         logger.log("SETUP", "Starting fusion...")
-        Thread(target = fusion.run, daemon = True).start()
+        Thread(target=fusion.run, daemon=True).start()
 
     if "apriltag" in start_modules:
         logger.log("SETUP", "Setting up apriltag...")
@@ -236,7 +236,7 @@ async def main(start_modules: list[str]) -> None:
         apriltag = AprilTagModule(status)
 
         logger.log("SETUP", "Starting apriltag...")
-        Thread(target = apriltag.run, daemon = True).start()
+        Thread(target=apriltag.run, daemon=True).start()
 
     if "autonomy" in start_modules:
         logger.log("SETUP", "Setting up autonomy...")
@@ -271,67 +271,67 @@ async def main(start_modules: list[str]) -> None:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-            epilog = "If none of these are set, the program will run everything."
+            epilog="If none of these are set, the program will run everything."
     )
     parser.add_argument(
             "--pcc",
-            action = "store_true",
-            default = False,
-            help = "Connect to the pcc"
+            action="store_true",
+            default=False,
+            help="Connect to the pcc"
     )
     parser.add_argument(
             "--thermal",
-            action = "store_true",
-            default = False,
-            help = "Stream the thermal camera"
+            action="store_true",
+            default=False,
+            help="Stream the thermal camera"
     )
     parser.add_argument(
             "--mavsdk",
-            action = "store_true",
-            default = False,
-            help = "Connect to mavp2p using mavsdk (async)"
+            action="store_true",
+            default=False,
+            help="Connect to mavp2p using mavsdk (async)"
     )
     parser.add_argument(
             "--mavutil",
-            action = "store_true",
-            default = False,
-            help = "Connect to mavp2p using mavutil in pymavlink"
+            action="store_true",
+            default=False,
+            help="Connect to mavp2p using mavutil in pymavlink"
     )
     parser.add_argument(
             "--fcm",
-            action = "store_true",
-            default = False,
-            help = "Stream telemetry data and update local position. Requires both mavsdk and mavutil"
+            action="store_true",
+            default=False,
+            help="Stream telemetry data and update local position. Requires both mavsdk and mavutil"
     )
     parser.add_argument(
             "--vio",
-            action = "store_true",
-            default = False,
-            help = "Start the zed camera"
+            action="store_true",
+            default=False,
+            help="Start the zed camera"
     )
     parser.add_argument(
             "--fusion",
-            action = "store_true",
-            default = False,
-            help = "Stream the local position of the avr drone. Requires fcm and vio"
+            action="store_true",
+            default=False,
+            help="Stream the local position of the avr drone. Requires fcm and vio"
     )
     parser.add_argument(
             "--apriltag",
-            action = "store_true",
-            default = False,
-            help = "Start detecting apriltags with the csi camera. Requires fusion"
+            action="store_true",
+            default=False,
+            help="Start detecting apriltags with the csi camera. Requires fusion"
     )
     parser.add_argument(
             "--autonomy",
-            action = "store_true",
-            default = False,
-            help = "Start autonomy. Requires all other modules"
+            action="store_true",
+            default=False,
+            help="Start autonomy. Requires all other modules"
     )
     parser.add_argument(
             "--interpreter",
-            action = "store_true",
-            default = False,
-            help = "Use this if you are running in an interpreter"
+            action="store_true",
+            default=False,
+            help="Use this if you are running in an interpreter"
     )
     args = vars(parser.parse_args())
     is_interpreter = args.pop("interpreter") if "interpreter" in args else False
@@ -356,7 +356,7 @@ if __name__ == '__main__':
         if start:
             start_items.append(name)
 
-    main_thread = Thread(target = lambda: asyncio.run(main(start_items)), daemon = True)
+    main_thread = Thread(target=lambda: asyncio.run(main(start_items)), daemon=True)
     # status_thread = Thread(target = ensure_running, daemon = True)
     main_thread.start()
     # status_thread.start()

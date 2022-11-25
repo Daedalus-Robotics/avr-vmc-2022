@@ -13,9 +13,9 @@ class Status:
         self.client.register_callback(
                 "avr/status/request_update",
                 self.send_update,
-                qos = 2,
-                is_json = False,
-                use_args = False
+                qos=2,
+                is_json=False,
+                use_args=False
         )
 
         self.status_strip = status_strip
@@ -34,8 +34,8 @@ class Status:
                 self.client.register_callback(
                         f"avr/status/restart/{name}",
                         restart_callback,
-                        is_json = False,
-                        use_args = False
+                        is_json=False,
+                        use_args=False
                 )
             if led_num >= 0:
                 self.status_leds[name] = self.status_strip.get_status_led(led_num)
@@ -48,8 +48,8 @@ class Status:
             self.client.register_callback(
                     f"avr/status/restart/{name}",
                     restart_callback,
-                    is_json = False,
-                    use_args = False
+                    is_json=False,
+                    use_args=False
             )
 
     def update_status(self, name: str, value: bool) -> None:
@@ -72,4 +72,4 @@ class Status:
             self.status_leds[name].set_color(RUNNING_COLOR if self.statuses[name] else STOPPED_COLOR)
 
     def send_update(self) -> None:
-        self.client.send_message("avr/status/update", self.statuses, qos = 2)
+        self.client.send_message("avr/status/update", self.statuses, qos=2)

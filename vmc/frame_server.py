@@ -70,7 +70,7 @@ class FrameServer:
             height = frame.shape[0]
         # noinspection PyBroadException
         try:
-            resized_frame = stream.image_resize(frame, height = height)
+            resized_frame = stream.image_resize(frame, height=height)
             success, encoded_frame = stream.encode_frame(
                     resized_frame,
                     (int(cv2.IMWRITE_JPEG_QUALITY), compression_level)
@@ -102,7 +102,7 @@ class FrameServer:
 
     def start(self) -> None:
         self.is_running = True
-        self.server_thread = Thread(target = self._server_loop, daemon = True)
+        self.server_thread = Thread(target=self._server_loop, daemon=True)
         self.server_thread.start()
 
     def stop(self, hold: bool = False) -> None:
@@ -110,7 +110,7 @@ class FrameServer:
         if hold and self.server_thread is not None:
             self.server_thread.join()
 
-    def restart(self, _ = None) -> None:
+    def restart(self, _=None) -> None:
         self.stop(True)
         self.start()
 

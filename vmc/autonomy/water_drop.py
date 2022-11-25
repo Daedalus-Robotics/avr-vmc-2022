@@ -1,6 +1,6 @@
 import json
 import time
-from threading import Barrier, BrokenBarrierError
+from threading import Barrier, BrokenBarrierError, Thread
 
 import mavsdk
 from bell.avr.mqtt.payloads import AvrApriltagsVisibleTags

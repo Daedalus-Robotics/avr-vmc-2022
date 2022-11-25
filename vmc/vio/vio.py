@@ -12,14 +12,14 @@ from bell.avr.mqtt.payloads import (
     AvrVioResyncPayload,
     AvrVioVelocityNedPayload,
 )
-from bell.avr.utils.decorators import run_forever, try_except
+from bell.avr.utils.decorators import try_except
 from loguru import logger
 
+from .vio_library import CameraCoordinateTransformation
+from .zed_library import ZEDCamera
 from ..frame_server import CameraType, FrameServer
 from ..mqtt_client import MQTTClient
 from ..status import Status
-from .vio_library import CameraCoordinateTransformation
-from .zed_library import ZEDCamera
 
 
 class VIOModule:
@@ -79,7 +79,7 @@ class VIOModule:
             )
             self.init_sync = True
 
-    @try_except(reraise = False)
+    @try_except(reraise=False)
     def publish_updates(
             self,
             ned_pos: Tuple[float, float, float],
@@ -94,7 +94,7 @@ class VIOModule:
         n = float(ned_pos[0])
         e = float(ned_pos[1])
         d = float(ned_pos[2])
-        ned_update = AvrVioPositionNedPayload(n = n, e = e, d = d)  # cm
+        ned_update = AvrVioPositionNedPayload(n=n, e=e, d=d)  # cm
 
         # noinspection PyTypeChecker
         # self.send_message("avr/vio/position/ned", ned_update)
@@ -105,7 +105,7 @@ class VIOModule:
             raise ValueError("Camera has NaNs for orientation")
 
         # send orientation update
-        eul_update = AvrVioOrientationEulPayload(psi = rpy[0], theta = rpy[1], phi = rpy[2])
+        eul_update = AvrVioOrientationEulPayload(psi=rpy[0], theta=rpy[1], phi=rpy[2])
         # noinspection PyTypeChecker
         # self.send_message("avr/vio/orientation/eul", eul_update)
         self.orientation_eul = eul_update
@@ -117,7 +117,7 @@ class VIOModule:
         if heading < 0:
             heading += 2 * math.pi
         heading = np.rad2deg(heading)
-        heading_update = AvrVioHeadingPayload(degrees = heading)
+        heading_update = AvrVioHeadingPayload(degrees=heading)
         # noinspection PyTypeChecker
         # self.send_message("avr/vio/heading", heading_update)
         self.vio_heading = heading_update
@@ -128,21 +128,21 @@ class VIOModule:
             raise ValueError("Camera has NaNs for velocity")
 
         # send velocity update
-        vel_update = AvrVioVelocityNedPayload(n = ned_vel[0], e = ned_vel[1], d = ned_vel[2])
+        vel_update = AvrVioVelocityNedPayload(n=ned_vel[0], e=ned_vel[1], d=ned_vel[2])
         # noinspection PyTypeChecker
         # self.send_message("avr/vio/velocity/ned", vel_update)
         self.velocity_ned = vel_update
         self.velocity_ned_func(self.velocity_ned)
 
         confidence_update = AvrVioConfidencePayload(
-                tracker = tracker_confidence,
+                tracker=tracker_confidence,
         )
         # noinspection PyTypeChecker
         # self.send_message("avr/vio/confidence", confidence_update)
         self.vio_confidence = confidence_update
         self.vio_confidence_func(self.vio_confidence)
 
-    @try_except(reraise = False)
+    @try_except(reraise=False)
     def process_camera_data(self) -> None:
         self.status.update_status("vio", True)
         while self.running:
@@ -169,7 +169,7 @@ class VIOModule:
         except BrokenBarrierError:
             pass
 
-    @try_except(reraise = False)
+    @try_except(reraise=False)
     def update_frames(self) -> None:
         while self.running:
             success, right, left, depth = self.camera.get_frames()
@@ -191,14 +191,5 @@ class VIOModule:
         self.camera.setup()
 
         # begin processing data
-        Thread(target = self.update_frames, daemon = True).start()
-        Thread(target = self.process_camera_data, daemon = True).start()
-
-
-if __name__ == "__main__":
-    f = FrameServer()
-    f.start()
-    vio = VIOModule(f)
-    vio.run()
-    while True:
-        pass
+        Thread(target=self.update_frames, daemon=True).start()
+        Thread(target=self.process_camera_data, daemon=True).start()
