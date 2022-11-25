@@ -52,6 +52,8 @@ class AprilTagModule:
 
         self.detections = {}
 
+        self.visible_detections = {}
+
     def close(self) -> None:
         self.process.terminate()
         time.sleep(1)  # wait for apriltag to be terminated
