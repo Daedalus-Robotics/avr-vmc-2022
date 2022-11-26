@@ -24,7 +24,9 @@ from vmc.status_led import StatusStrip
 from vmc.thermal import ThermalCamera
 from vmc.zmq_server import ZMQServer
 
-logger.level("SETUP", no = 50, color = "<magenta><bold><italic>", icon = "⚙️")
+logger.level("SETUP", no=50, color="<magenta><bold><italic>", icon="⚙️")
+logger.level("TEST", no=52, color="<green><bold><italic>", icon="🎚️")
+logger.level("TEST_FAILED", no=52, color="<red><bold><italic>", icon="🎚️")
 
 main_thread: Thread | None = None
 # status_thread: Thread | None = None
@@ -203,7 +205,7 @@ async def main(start_modules: list[str]) -> None:
                 source_system=142,
                 dialect="bell"
         )
-        mqtt_client.register_callback("avr/arm", set_armed, is_json = True, use_args = True, qos = 2)
+        mqtt_client.register_callback("avr/arm", set_armed, is_json=True, use_args=True, qos=2)
 
     if "fcm" in start_modules:
         logger.log("SETUP", "Setting up fcm...")
