@@ -431,6 +431,12 @@ async def main(start_modules: list[str]) -> None:
             is_json=False,
             use_args=False
     )
+    mqtt_client.register_callback(
+            "avr/test",
+            test_mqtt,
+            is_json=True,
+            use_args=True
+    )
 
     if "pcc" in start_modules:
         logger.log("SETUP", "Setting up pcc...")
