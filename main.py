@@ -402,11 +402,11 @@ def test_print_report(
         report_list.append(autonomy_report)
     report_list.append("-" * 10)
 
-    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d-%H:%M")
-    report_file = open(f"~/vmc-report-{timestamp}", "w")
+    # timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d-%H:%M")
+    # report_file = open(f"~/vmc-report-{timestamp}", "w")
     for report in report_list:
         print(report)
-        report_file.write(report)
+        # report_file.write(report)
 
 
 async def main(start_modules: list[str]) -> None:
