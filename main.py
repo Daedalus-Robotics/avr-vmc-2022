@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import atexit
+import datetime
+import json
 import os
 import subprocess
 import time
@@ -8,20 +10,21 @@ from threading import Thread
 
 import mavsdk
 from loguru import logger
+from mavsdk.telemetry import FixType
 from pymavlink import mavutil
 from systemctl import Service, ServiceState
 
 from vmc.apriltag.python.apriltag_processor import AprilTagModule
 from vmc.autonomy.autonomy import Autonomy
-from vmc.frame_server import FrameServer
 from vmc.fcm.fcm import FlightControlModule
+from vmc.frame_server import FrameServer
 from vmc.fusion import FusionModule
-from vmc.vio.vio import VIOModule
 from vmc.mqtt_client import MQTTClient
 from vmc.pcc import PeripheralControlComputer
 from vmc.status import Status
 from vmc.status_led import StatusStrip
 from vmc.thermal import ThermalCamera
+from vmc.vio.vio import VIOModule
 from vmc.zmq_server import ZMQServer
 
 logger.level("SETUP", no=50, color="<magenta><bold><italic>", icon="⚙️")
@@ -135,6 +138,275 @@ def shutdown_vmc() -> None:
         fcm.gps_fcc.shutdown()
     time.sleep(2)
     subprocess.Popen(["sudo", "shutdown", "now"])
+
+
+def run_test() -> None:
+    Thread(target=test, daemon=True).start()
+
+
+def test_mqtt(message: dict) -> None:
+    try:
+        long = message.get("long", False)
+        test(long)
+    finally:
+        pass
+
+
+def test(long: bool) -> None:
+    pcc_working = None
+    mavp2p_working = None
+    thermal_working = None
+    frame_working = None
+    pymavlink_working = None
+    fcm_working = None
+    vio_working = None
+    fusion_working = None
+    apriltag_working = None
+    autonomy_working = None
+
+    thermal_functional = None
+    fusion_functional = None
+    apriltag_functional = None
+
+    fusion_fix = None
+    if pcc is not None:
+        logger.log("TEST", "Testing PCC...")
+        pcc_working = pcc.is_connected
+        if pcc_working:
+            logger.log("TEST", "PCC is running")
+            test_pcc()
+        else:
+            logger.log("TEST_FAILED", "PCC not running")
+    if mavp2p is not None:
+        logger.log("TEST", "Testing mavp2p...")
+        mavp2p_working = mavp2p.is_active
+        if mavp2p_working:
+            logger.log("TEST", "Mavp2p is running")
+        else:
+            logger.log("TEST_FAILED", "Mavp2p is not running")
+    if thermal is not None:
+        logger.log("TEST", "Testing thermal cam...")
+        thermal_working = thermal.amg.temperature is not None and thermal.running
+        if thermal_working:
+            logger.log("TEST", "Thermal cam running")
+            if long:
+                thermal_functional = test_thermal()
+        else:
+            logger.log("TEST_FAILED", "Thermal cam not running")
+    if frame_server is not None:
+        logger.log("TEST", "Testing frame server...")
+        frame_working = frame_server.is_running
+        if frame_working:
+            logger.log("TEST", "Frame server running")
+        else:
+            logger.log("TEST_FAILED", "Frame server not running")
+    if pymavlink_connection is not None:
+        logger.log("TEST", "Testing PyMAVLink...")
+        heartbeat = pymavlink_connection.wait_heartbeat(True, 5)
+        pymavlink_working = heartbeat is not None
+        if pymavlink_working:
+            logger.log("TEST", "PyMAVLink working")
+        else:
+            logger.log("TEST_FAILED", "PyMAVLink not working")
+    if fcm is not None:
+        logger.log("TEST", "Testing flight controller and mavsdk system...")
+        fcm_working = not fcm.fcc.telemetry_tasks_future.done()
+        if fcm_working:
+            logger.log("TEST", "Flight controller and mavsdk system are working")
+        else:
+            logger.log("TEST_FAILED", "Flight controller and mavsdk system are not working")
+    if vio is not None:
+        logger.log("TEST", "Testing VIO...")
+        vio_working = False
+        if vio.running and vio.camera.zed.is_opened():
+            if vio.camera.zed.is_streaming_enabled() and vio.camera.zed.is_positional_tracking_enabled():
+                vio_working = True
+                logger.log("TEST", "VIO and zed camera working")
+        if not vio_working:
+            logger.log("TEST_FAILED", "VIO not working")
+    if fusion is not None:
+        logger.log("TEST", "Testing fusion...")
+        fusion_working = fusion.running
+        if fusion.running:
+            pos_state = fcm.fcc.position_state
+            satellite_num, gps_fix = pos_state
+            fusion_fix = gps_fix
+            if satellite_num > 0 and gps_fix == FixType.FIX_3D:
+                fusion_functional = True
+                logger.log("TEST", "Fusion is working")
+            else:
+                fusion_functional = False
+        if not fusion_working:
+            logger.log("TEST_FAILED", "Fusion not working")
+    if apriltag is not None:
+        logger.log("TEST", "Testing apriltag...")
+        apriltag_working = apriltag.process is not None and apriltag.process.poll() is None
+        if apriltag_working:
+            logger.log("TEST", "Apriltag is working")
+            if long:
+                apriltag_functional = test_apriltag()
+                if apriltag_functional:
+                    logger.log("TEST", "Apriltag is functional")
+                else:
+                    logger.log("TEST_FAILED", "Apriltag is not functional")
+        else:
+            logger.log("TEST_FAILED", "Apriltag not working")
+    if autonomy is not None:
+        logger.log("TEST", "Testing autonomy...")
+        autonomy_states = (
+            autonomy.running,
+            autonomy.gimbal_thread.is_alive(),
+            autonomy.water_drop_thread.is_alive()
+        )
+        autonomy_working = False not in autonomy_states
+        if autonomy_working:
+            logger.log("TEST", "Autonomy is working")
+            test_autonomy()
+        else:
+            logger.log("TEST_FAILED", "Autonomy not working")
+    logger.log("TEST", "Testing done, generating report...")
+    test_print_report(
+            pcc_working,
+            mavp2p_working,
+            thermal_working,
+            frame_working,
+            pymavlink_working,
+            fcm_working,
+            vio_working,
+            fusion_working,
+            apriltag_working,
+            autonomy_working,
+            thermal_functional,
+            fusion_functional,
+            apriltag_functional,
+            fusion_fix
+    )
+
+
+def test_pcc() -> None:
+    logger.log("TEST", "Testing pcc functions...")
+    logger.log("TEST", "Testing laser...")
+    pcc.fire_laser(5, False)
+    logger.log("TEST", "Testing leds...")
+    pcc.color_wipe(100)
+    time.sleep(2)
+
+
+def test_thermal() -> bool:
+    logger.log("TEST", "Testing hotspot detection...")
+    logger.log("TEST", "Waiting for hotspot to be detected")
+    functional = False
+    start_time = time.time()
+    while time.time() < start_time + 30:
+        if thermal.detector.currently_detecting:
+            logger.log("TEST", "Found hotspot")
+            functional = True
+            break
+    return functional
+
+
+def test_apriltag() -> bool:
+    logger.log("TEST", "Testing apriltag functions...")
+    logger.log("TEST", "Waiting for tag 24 to be detected")
+    functional = False
+    start_time = time.time()
+    while time.time() < start_time + 30:
+        if 24 in apriltag.detections:
+            detect_time = apriltag.detections[24][1]
+            if detect_time > start_time:
+                logger.log("TEST", "Found apriltag 24")
+                functional = True
+                break
+    return functional
+
+
+def test_autonomy() -> None:
+    logger.log("TEST", "Testing autonomy functions...")
+    try:
+        gimbal_test_data = json.load(open("vmc/resources/gimbal_test.json", 'r'))
+        logger.log("TEST", "Testing gimbal...")
+        for point in gimbal_test_data:
+            timeout = point.get("time", 0)
+            x = point.get("x", None)
+            y = point.get("y", None)
+            if None not in (x, y):
+                time.sleep(timeout)
+                autonomy.gimbal.set_pos(x, y)
+    except (OSError, json.JSONDecodeError):
+        logger.log("TEST_FAILED", "Can't read gimbal test data")
+    logger.log("TEST", "Testing water dropper in 5 seconds, pick the drone up")
+    time.sleep(5)
+    autonomy.water_drop.set_water_drop(100)
+    time.sleep(1.2)
+    autonomy.water_drop.set_water_drop(0)
+
+
+def test_print_report(
+        pcc_working: bool,
+        mavp2p_working: bool,
+        thermal_working: bool,
+        frame_working: bool,
+        pymavlink_working: bool,
+        fcm_working: bool,
+        vio_working: bool,
+        fusion_working: bool,
+        apriltag_working: bool,
+        autonomy_working: bool,
+        thermal_functional: bool,
+        fusion_functional: bool,
+        apriltag_functional: bool,
+        fusion_fix: FixType
+) -> None:
+    report_list = ["-" * 10]
+    if pcc_working is not None:
+        pcc_report = f"PCC:\n  Running: {pcc_working}"
+        report_list.append(pcc_report)
+    if mavp2p_working is not None:
+        mavp2p_report = f"MavP2P:\n  Running: {mavp2p_working}"
+        report_list.append(mavp2p_report)
+    if thermal_working is not None:
+        thermal_report = "Thermal:"
+        thermal_report += f"\n  Running: {thermal_working}"
+        if thermal_functional is not None:
+            thermal_report += f"\n  Detector: {'Functional' if thermal_functional else 'Non-Functional'}"
+        report_list.append(thermal_report)
+    if frame_working is not None:
+        frame_report = f"Frame Server:\n  Running: {frame_working}"
+        report_list.append(frame_report)
+    if fcm_working is not None:
+        fcm_report = "Flight Controller:"
+        fcm_report += f"\n  MAVLink:"
+        fcm_report += f"\n    Connection: {'Connected' if pymavlink_working else 'Disconnected'}"
+        fcm_report += f"\n    Telemetry Tasks: {'Running' if fcm_working else 'Stopped'}"
+        report_list.append(fcm_report)
+    elif pymavlink_working is not None:
+        pymavlink_report = f"PyMavlink:\n  Running: {pymavlink_working}"
+        report_list.append(pymavlink_report)
+    if vio_working is not None:
+        vio_report = f"VIO:\n  Running: {vio_working}"
+        report_list.append(vio_report)
+    if fusion_working is not None:
+        fusion_report = "Fusion:"
+        fusion_report += f"\n  Running: {fusion_working}"
+        fusion_report += f"\n  GPS Fix: {fusion_fix}"
+        fusion_report += f"\n  Position Hold: {'Functional' if fusion_functional else 'Non-Functional'}"
+        report_list.append(fusion_report)
+    if apriltag_working is not None:
+        apriltag_report = "Apriltag:"
+        apriltag_report += f"\n  Running: {apriltag_working}"
+        if apriltag_functional is not None:
+            apriltag_report += f"\n  Detector: {'Functional' if apriltag_functional else 'Non-Functional'}"
+        report_list.append(apriltag_report)
+    if autonomy_working is not None:
+        autonomy_report = f"Autonomy:\n  Running: {autonomy_working}"
+        report_list.append(autonomy_report)
+    report_list.append("-" * 10)
+
+    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d-%H:%M")
+    report_file = open(f"~/vmc-report-{timestamp}", "w")
+    for report in report_list:
+        print(report)
+        report_file.write(report)
 
 
 async def main(start_modules: list[str]) -> None:
