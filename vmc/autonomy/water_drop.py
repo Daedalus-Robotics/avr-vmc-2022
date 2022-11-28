@@ -48,6 +48,7 @@ class WaterDrop:
         self.client.register_callback("avr/autonomy/set_auto_water_drop", self.set_auto_water_drop, True, True)
 
     def set_drop_delay(self, number: int | dict | str) -> None:
+        print(number)
         if isinstance(number, str):
             number = json.loads(number)
         if isinstance(number, dict):
