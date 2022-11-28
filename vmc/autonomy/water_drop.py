@@ -139,6 +139,7 @@ class WaterDrop:
                     print(f"tag id: {tag_id}")
                     if tag_id == -1:
                         continue
+                    Thread(target=self.run_blink_sequence, daemon=True).start()
                     logger.info(f"Locked onto tag {tag_id}")
                     while self.is_dropping:
                         tag = self.apriltags.detections.get(tag_id, None)[0]

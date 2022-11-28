@@ -98,13 +98,13 @@ class AprilTagModule:
             self.tm[h_to_from] = np.eye(4)
 
     def on_apriltag_message(self, payload: AvrApriltagsRawPayload) -> None:
-        print("hello world")
         tag_list: List[AvrApriltagsVisibleTags] = []
 
         min_dist = 1000000
         closest_tag = None
 
         for index, tag in enumerate(payload["tags"]):
+            print(f"Tag: {tag}")
             (
                 id_,
                 horizontal_distance,
@@ -136,6 +136,7 @@ class AprilTagModule:
                         "z": None,
                     },
             )
+            print(f"Rel: {pos_rel}")
 
             # add some more info if we had the truth data for the tag
             if pos_world is not None and pos_world.any():
