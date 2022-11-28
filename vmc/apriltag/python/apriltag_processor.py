@@ -104,7 +104,6 @@ class AprilTagModule:
         closest_tag = None
 
         for index, tag in enumerate(payload["tags"]):
-            print(f"Tag: {tag}")
             (
                 id_,
                 horizontal_distance,
@@ -152,7 +151,7 @@ class AprilTagModule:
             tag_list.append(tag)
             self.detections[id_] = (tag, time.time())
         self.visible_detections = (time.time(), tag_list)
-        print("Tag: " + str(tag_list))
+        # print("Tag: " + str(tag_list))
 
         self.client.send_message(
                 "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags=tag_list)

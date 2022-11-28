@@ -41,8 +41,19 @@ class WaterDrop:
         # self.client.register_callback("off_en", self.mqtt_off_en, False, False)
         # self.client.register_callback("off_dis", self.mqtt_off_dis, False, False)
         # self.client.register_callback("off_go", self.mqtt_go, True, True)
+        self.temp_drop_delay = 5
+
         self.client.register_callback("avr/autonomy/kill", self.kill, False, False)
+        self.client.register_callback("avr/autonomy/set_drop_delay", self.set_drop_delay, True, True)
         self.client.register_callback("avr/autonomy/set_auto_water_drop", self.set_auto_water_drop, True, True)
+
+    def set_drop_delay(self, number: int | dict | str) -> None:
+        if isinstance(number, str):
+            number = json.loads(number)
+        if isinstance(number, dict):
+            number = number.get("num", None)
+        if number is not None:
+            self.temp_drop_delay = number
 
     def set_auto_water_drop(self, message: bool | str | dict):
         if isinstance(message, str):
@@ -141,21 +152,44 @@ class WaterDrop:
                         continue
                     Thread(target=self.run_blink_sequence, daemon=True).start()
                     logger.info(f"Locked onto tag {tag_id}")
+                    self.client.send_message(
+                            "avr/gui/toast",
+                            {
+                                "text": f"Locked onto tag {tag_id}",
+                                "timeout": 2
+                            }
+                    )
+                    temp_start_time = time.time()
                     while self.is_dropping:
                         tag = self.apriltags.detections.get(tag_id, None)[0]
-                        if tag is None:
-                            logger.debug(f"Tag {tag_id} not in view")
-                            continue
-                        pos = tag.get("pos_rel", None)
-                        if pos is None:
-                            logger.warning(f"Could not get a position for tag {tag_id}")
-                            continue
-                        x = pos["x"]
-                        y = pos["y"]
-                        z = pos["z"]
-                        logger.info(f"Tracking tag {tag_id} at {pos}")
-                        if x < 0.5 and y < 0.5 and z < 0.5:
+                        # if tag is None:
+                        #     logger.debug(f"Tag {tag_id} not in view")
+                        #     continue
+                        # pos = tag.get("pos_rel", None)
+                        # if pos is None:
+                        #     logger.warning(f"Could not get a position for tag {tag_id}")
+                        #     continue
+                        # x = pos["x"]
+                        # y = pos["y"]
+                        # z = pos["z"]
+                        # logger.info(f"Tracking tag {tag_id} at {pos}")
+                        # if x < 0.5 and y < 0.5 and z < 0.5:
+                        self.client.send_message(
+                                "avr/gui/toast",
+                                {
+                                    "text": f"Dropping in {int(time.time() - temp_start_time)}",
+                                    "timeout": 1
+                                }
+                        )
+                        if time.time() - temp_start_time > self.temp_drop_delay:
                             logger.info(f"Dropping on tag {tag_id}")
+                            self.client.send_message(
+                                    "avr/gui/toast",
+                                    {
+                                        "text": f"Dropping on tag {tag_id}",
+                                        "timeout": 2
+                                    }
+                            )
                             self.do_drop()
                             self.is_dropping = False
                         time.sleep(0.1)
