@@ -52,7 +52,8 @@ class AprilTagModule:
 
         self.detections = {}
 
-        self.visible_detections = {}
+        self.visible_detections = (time.time(), {})
+        self.closest_tag = (None, -1)
 
     def close(self) -> None:
         self.process.terminate()
@@ -97,6 +98,7 @@ class AprilTagModule:
             self.tm[h_to_from] = np.eye(4)
 
     def on_apriltag_message(self, payload: AvrApriltagsRawPayload) -> None:
+        print("hello world")
         tag_list: List[AvrApriltagsVisibleTags] = []
 
         min_dist = 1000000
@@ -148,13 +150,17 @@ class AprilTagModule:
 
             tag_list.append(tag)
             self.detections[id_] = (tag, time.time())
-        self.visible_detections = tag_list
+        self.visible_detections = (time.time(), tag_list)
+        print("Tag: " + str(tag_list))
 
         self.client.send_message(
                 "avr/apriltags/visible", AvrApriltagsVisiblePayload(tags=tag_list)
         )
 
         if closest_tag is not None:
+            closest_tag_dict = self.visible_detections[closest_tag]
+            self.closest_tag = (closest_tag_dict, time.time())
+
             pos_world = tag_list[closest_tag]["pos_world"]
 
             # this shouldn't happen

@@ -32,7 +32,7 @@ class Autonomy:
         self.pcc = pcc
         self.thermal = thermal
         self.vio = vio
-        self.zed = vio.camera.zed
+        # self.zed = vio.camera.zed
         self.mavlink_system = mavlink_system
         self.mavutil_connection = mavutil_connection
         self.apriltags = apriltags

@@ -219,9 +219,8 @@ def test(long: bool) -> None:
         logger.log("TEST", "Testing VIO...")
         vio_working = False
         if vio.running and vio.camera.zed.is_opened():
-            if vio.camera.zed.is_streaming_enabled() and vio.camera.zed.is_positional_tracking_enabled():
-                vio_working = True
-                logger.log("TEST", "VIO and zed camera working")
+            vio_working = True
+            logger.log("TEST", "VIO and zed camera working")
         if not vio_working:
             logger.log("TEST_FAILED", "VIO not working")
     if fusion is not None:
@@ -447,6 +446,8 @@ async def main(start_modules: list[str]) -> None:
         logger.log("SETUP", "Starting pcc...")
         pcc.begin()
         pcc.begin_mqtt()
+        pcc.set_base_color((255, 255, 255, 255))
+        pcc.set_base_color((255, 0, 0, 0))
 
         # ToDo: move this to a reasonable spot
         pcc.set_servo_max(1, 1000)

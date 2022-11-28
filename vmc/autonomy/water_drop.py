@@ -107,10 +107,19 @@ class WaterDrop:
 
     def run_blink_sequence(self) -> None:
         self.pcc.set_temp_color((255, 200, 255, 0), 0.2)
-        time.sleep(0.2 + 0.2)
+        time.sleep(0.3)
         self.pcc.set_temp_color((255, 200, 255, 0), 0.2)
-        time.sleep(0.2 + 0.2)
+        time.sleep(0.3)
         self.pcc.set_temp_color((255, 200, 255, 0), 0.2)
+
+    def do_drop(self) -> None:
+        self.set_water_drop(100)
+        time.sleep(0.5)
+        self.set_water_drop(80)
+        time.sleep(0.2)
+        self.set_water_drop(100)
+        time.sleep(0.6)
+        self.set_water_drop(0)
 
     async def run(self) -> None:
         logger.info("Water Drop started")
@@ -119,33 +128,40 @@ class WaterDrop:
         while self.running:
             if self.is_dropping:
                 if not last_is_dropping:
-                    self.pcc.set_base_color((50, 0, 50, 200))
-                tag_id = -1
-                for num in self.apriltags.visible_detections:
-                    tag_id = num
-                if tag_id != -1:
-                    tag: AvrApriltagsVisibleTags = self.apriltags.visible_detections.get(tag_id, None)
-                    if tag is not None:
-                        Thread(target=self.run_blink_sequence, daemon=True).start()
-                        while self.is_dropping:
-                            pos = tag["pos_rel"]
-                            x = pos["x"]
-                            y = pos["y"]
-                            z = pos["z"]
-                            if x < 0.5 and y < 1.0 and z < 0.5:
-                                self.set_water_drop(100)
-                                time.sleep(0.5)
-                                self.set_water_drop(80)
-                                time.sleep(0.2)
-                                self.set_water_drop(100)
-                                time.sleep(1.2)
-                                self.set_water_drop(0)
-                                self.is_dropping = False
-                            time.sleep(0.1)
+                    self.pcc.set_base_color((100, 0, 50, 200))
+                last_is_dropping = True
+                # if self.apriltags.closest_tag[0] is not None and time.time() - self.apriltags.closest_tag[1] < 5:
+                time_offset = time.time() - self.apriltags.visible_detections[0]
+                print(f"Offset: {time_offset}")
+                if time_offset < 5 and len(self.apriltags.visible_detections[1]) > 0:
+                    # tag_id = self.apriltags.closest_tag[0].get("id", -1)
+                    tag_id = self.apriltags.visible_detections[1][0].get("id", -1)
+                    print(f"tag id: {tag_id}")
+                    if tag_id == -1:
+                        continue
+                    logger.info(f"Locked onto tag {tag_id}")
+                    while self.is_dropping:
+                        tag = self.apriltags.detections.get(tag_id, None)[0]
+                        if tag is None:
+                            logger.debug(f"Tag {tag_id} not in view")
+                            continue
+                        pos = tag.get("pos_rel", None)
+                        if pos is None:
+                            logger.warning(f"Could not get a position for tag {tag_id}")
+                            continue
+                        x = pos["x"]
+                        y = pos["y"]
+                        z = pos["z"]
+                        logger.info(f"Tracking tag {tag_id} at {pos}")
+                        if x < 0.5 and y < 0.5 and z < 0.5:
+                            logger.info(f"Dropping on tag {tag_id}")
+                            self.do_drop()
+                            self.is_dropping = False
+                        time.sleep(0.1)
             else:
                 if last_is_dropping:
                     self.pcc.set_base_color((0, 0, 0, 0))
-            last_is_dropping = self.is_dropping
+                last_is_dropping = False
             time.sleep(1 / 10)
             # if self.do_off_en:
             #     logger.info("Enable offboard control")
