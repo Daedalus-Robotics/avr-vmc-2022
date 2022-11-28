@@ -54,6 +54,13 @@ class WaterDrop:
             number = number.get("num", None)
         if number is not None:
             self.temp_drop_delay = number
+            self.client.send_message(
+                    "avr/gui/toast",
+                    {
+                        "text": f"Drop delay set to {number} seconds",
+                        "timeout": 2
+                    }
+            )
 
     def set_auto_water_drop(self, message: bool | str | dict):
         if isinstance(message, str):
@@ -147,7 +154,7 @@ class WaterDrop:
                 if time_offset < 5 and len(self.apriltags.visible_detections[1]) > 0:
                     # tag_id = self.apriltags.closest_tag[0].get("id", -1)
                     tag_id = self.apriltags.visible_detections[1][0].get("id", -1)
-                    print(f"tag id: {tag_id}")
+                    # print(f"tag id: {tag_id}")
                     if tag_id == -1:
                         continue
                     Thread(target=self.run_blink_sequence, daemon=True).start()
@@ -161,6 +168,7 @@ class WaterDrop:
                     )
                     temp_start_time = time.time()
                     while self.is_dropping:
+                        time.sleep(0.1)
                         tag = self.apriltags.detections.get(tag_id, None)[0]
                         # if tag is None:
                         #     logger.debug(f"Tag {tag_id} not in view")
@@ -177,7 +185,7 @@ class WaterDrop:
                         self.client.send_message(
                                 "avr/gui/toast",
                                 {
-                                    "text": f"Dropping in {int(time.time() - temp_start_time)}",
+                                    "text": f"Dropping in {int(self.temp_drop_delay - (time.time() - temp_start_time))}",
                                     "timeout": 1
                                 }
                         )
@@ -192,7 +200,6 @@ class WaterDrop:
                             )
                             self.do_drop()
                             self.is_dropping = False
-                        time.sleep(0.1)
             else:
                 if last_is_dropping:
                     self.pcc.set_base_color((0, 0, 0, 0))
