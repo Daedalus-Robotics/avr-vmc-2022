@@ -167,9 +167,9 @@ class WaterDrop:
                                 "timeout": 2
                             }
                     )
+                    time.sleep(0.1)
                     temp_start_time = time.time()
                     while self.is_dropping:
-                        time.sleep(0.1)
                         tag = self.apriltags.detections.get(tag_id, None)[0]
                         # if tag is None:
                         #     logger.debug(f"Tag {tag_id} not in view")
@@ -183,10 +183,11 @@ class WaterDrop:
                         # z = pos["z"]
                         # logger.info(f"Tracking tag {tag_id} at {pos}")
                         # if x < 0.5 and y < 0.5 and z < 0.5:
+                        time_until_drop = int(self.temp_drop_delay - (time.time() - temp_start_time))
                         self.client.send_message(
                                 "avr/gui/toast",
                                 {
-                                    "text": f"Dropping in {int(self.temp_drop_delay - (time.time() - temp_start_time))}",
+                                    "text": f"Dropping in {time_until_drop}",
                                     "timeout": 1
                                 }
                         )
@@ -201,6 +202,7 @@ class WaterDrop:
                             )
                             self.do_drop()
                             self.is_dropping = False
+                        time.sleep(0.1)
             else:
                 if last_is_dropping:
                     self.pcc.set_base_color((0, 0, 0, 0))
