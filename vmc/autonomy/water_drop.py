@@ -147,6 +147,12 @@ class WaterDrop:
         while self.running:
             if self.is_dropping:
                 if not last_is_dropping:
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_state",
+                            {
+                                "state": "searching"
+                            }
+                    )
                     self.pcc.set_base_color((100, 0, 50, 200))
                 last_is_dropping = True
                 # if self.apriltags.closest_tag[0] is not None and time.time() - self.apriltags.closest_tag[1] < 5:
@@ -160,6 +166,18 @@ class WaterDrop:
                         continue
                     Thread(target=self.run_blink_sequence, daemon=True).start()
                     logger.info(f"Locked onto tag {tag_id}")
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_state",
+                            {
+                                "state": "locked"
+                            }
+                    )
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_locked",
+                            {
+                                "tag": tag_id
+                            }
+                    )
                     self.client.send_message(
                             "avr/gui/toast",
                             {
@@ -185,26 +203,57 @@ class WaterDrop:
                         # if x < 0.5 and y < 0.5 and z < 0.5:
                         time_until_drop = int(self.temp_drop_delay - (time.time() - temp_start_time))
                         self.client.send_message(
-                                "avr/gui/toast",
+                                "avr/autonomy/water_drop_countdown",
                                 {
-                                    "text": f"Dropping in {time_until_drop}",
-                                    "timeout": 1
+                                    "time": time_until_drop
                                 }
                         )
+                        # self.client.send_message(
+                        #         "avr/gui/toast",
+                        #         {
+                        #             "text": f"Dropping in {time_until_drop}",
+                        #             "timeout": 1
+                        #         }
+                        # )
                         if time.time() - temp_start_time > self.temp_drop_delay:
                             logger.info(f"Dropping on tag {tag_id}")
-                            self.client.send_message(
-                                    "avr/gui/toast",
-                                    {
-                                        "text": f"Dropping on tag {tag_id}",
-                                        "timeout": 2
-                                    }
-                            )
+                            # self.client.send_message(
+                            #         "avr/gui/toast",
+                            #         {
+                            #             "text": f"Dropping on tag {tag_id}",
+                            #             "timeout": 2
+                            #         }
+                            # )
                             self.do_drop()
                             self.is_dropping = False
                         time.sleep(0.1)
+                    time.sleep(1)
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_state",
+                            {
+                                "state": "inactive"
+                            }
+                    )
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_locked",
+                            {
+                                "tag": None
+                            }
+                    )
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_countdown",
+                            {
+                                "time": None
+                            }
+                    )
             else:
                 if last_is_dropping:
+                    self.client.send_message(
+                            "avr/autonomy/water_drop_state",
+                            {
+                                "state": "inactive"
+                            }
+                    )
                     self.pcc.set_base_color((0, 0, 0, 0))
                 last_is_dropping = False
             time.sleep(1 / 10)

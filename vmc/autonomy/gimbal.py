@@ -93,17 +93,28 @@ class Gimbal:
     def center(self) -> None:
         self.set_pos(X_CENTER, Y_CENTER)
 
+    def send_update(self) -> None:
+        self.client.send_message(
+                "avr/gimbal/response_pos",
+                {
+                    "x": self.last_x,
+                    "y": self.last_y
+                }
+        )
+
     def set_x(self, x: int) -> None:
         if X_SOFT_LIMIT[0] <= x <= X_SOFT_LIMIT[1]:
             self.last_x = x
             x = int(utils.map(x, 0, SERVO_RANGE, 0, 100))
             self.pcc.set_servo_pct(self.x_servo, x)
+        self.send_update()
 
     def set_y(self, y: int) -> None:
         if Y_SOFT_LIMIT[0] <= y <= Y_SOFT_LIMIT[1]:
             self.last_y = y
             y = int(utils.map(y, 0, SERVO_RANGE, 0, 100))
             self.pcc.set_servo_pct(self.y_servo, y)
+        self.send_update()
 
     def set_pos(self, x: int, y: int) -> None:
         self.set_x(x)
