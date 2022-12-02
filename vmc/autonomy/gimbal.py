@@ -41,8 +41,8 @@ class Gimbal:
 
         self.auto_aim_enabled = False
         self.do_single_aim = False
-        self.last_x: int | None = None
-        self.last_y: int | None = None
+        self.last_x: int = X_CENTER
+        self.last_y: int = Y_CENTER
 
         self.client.register_callback("avr/gimbal/disable", lambda: self.disable(), is_json=False, use_args=False)
         self.client.register_callback("avr/gimbal/center", lambda: self.center(), is_json=False, use_args=False)
