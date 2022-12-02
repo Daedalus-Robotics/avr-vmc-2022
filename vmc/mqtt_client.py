@@ -88,7 +88,8 @@ class MQTTClient:
 
     def _on_message(self, _: mqtt.Client, __: Any, msg: mqtt.MQTTMessage):
         if msg.topic in self.topic_map:
-            try:
+            # try:
+            if True:
                 topic_tuple = self.topic_map[msg.topic]
                 callback, is_json, _, _, _, use_args = topic_tuple
                 if use_args:
@@ -104,9 +105,10 @@ class MQTTClient:
                     if timesince >= 0.5:
                         self.status.led_event("mqtt", (255, 100, 0), 0.2)
                         self._last_flash = ss
-            except (AttributeError, TypeError, json.JSONDecodeError) as e:
-                logger.warning(f"Failed to run callback for topic {msg.topic}")
-                logger.warning(e)
+            # except (AttributeError, TypeError, json.JSONDecodeError) as e:
+            #     print(e)
+            #     logger.warning(f"Failed to run callback for topic {msg.topic}")
+            #     logger.warning(e)
 
     def send_message(
             self, topic: str, payload: Any, qos: int = DEFAULT_QOS, retain: bool = False, properties: Any = None
