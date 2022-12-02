@@ -105,7 +105,7 @@ class Gimbal:
     def set_x(self, x: int) -> None:
         if X_SOFT_LIMIT[0] <= x <= X_SOFT_LIMIT[1]:
             self.last_x = x
-            x = int(utils.map(x, 0, SERVO_RANGE, SERVO_RANGE[0], SERVO_RANGE[1]))
+            x = int(utils.map(x, 0, SERVO_RANGE, X_LIMITS[0], X_LIMITS[1]))
             self.pcc.set_servo_abs(self.x_servo, x)
         self.send_update()
 
