@@ -98,22 +98,22 @@ class Gimbal:
                 "avr/gimbal/response_pos",
                 {
                     "x": self.last_x,
-                    "y": self.last_y
+                    "y": utils.map(self.last_y, 0, 180, Y_SOFT_LIMIT[0], Y_SOFT_LIMIT[1])
                 }
         )
 
     def set_x(self, x: int) -> None:
         if X_SOFT_LIMIT[0] <= x <= X_SOFT_LIMIT[1]:
             self.last_x = x
-            x = int(utils.map(x, 0, SERVO_RANGE, 0, 100))
-            self.pcc.set_servo_pct(self.x_servo, x)
+            x = int(utils.map(x, 0, SERVO_RANGE, SERVO_RANGE[0], SERVO_RANGE[1]))
+            self.pcc.set_servo_abs(self.x_servo, x)
         self.send_update()
 
     def set_y(self, y: int) -> None:
         if Y_SOFT_LIMIT[0] <= y <= Y_SOFT_LIMIT[1]:
             self.last_y = y
-            y = int(utils.map(y, 0, SERVO_RANGE, 0, 100))
-            self.pcc.set_servo_pct(self.y_servo, y)
+            y = int(utils.map(y, 0, SERVO_RANGE, Y_LIMITS[0], Y_LIMITS[1]))
+            self.pcc.set_servo_abs(self.y_servo, y)
         self.send_update()
 
     def set_pos(self, x: int, y: int) -> None:
