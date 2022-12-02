@@ -135,7 +135,7 @@ class AprilTagModule:
                         "z": None,
                     },
             )
-            print(f"Rel: {pos_rel}")
+            # print(f"Rel: {pos_rel}")
 
             # add some more info if we had the truth data for the tag
             if pos_world is not None and pos_world.any():

@@ -157,7 +157,7 @@ class WaterDrop:
                 last_is_dropping = True
                 # if self.apriltags.closest_tag[0] is not None and time.time() - self.apriltags.closest_tag[1] < 5:
                 time_offset = time.time() - self.apriltags.visible_detections[0]
-                print(f"Offset: {time_offset}")
+                # print(f"Offset: {time_offset}")
                 if time_offset < 5 and len(self.apriltags.visible_detections[1]) > 0:
                     # tag_id = self.apriltags.closest_tag[0].get("id", -1)
                     tag_id = self.apriltags.visible_detections[1][0].get("id", -1)
