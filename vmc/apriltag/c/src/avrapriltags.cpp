@@ -143,13 +143,13 @@ int main()
 
             payload.append("]}");
 
-            auto end = std::chrono::system_clock::now();
+//            auto end = std::chrono::system_clock::now();
 
             if (num_detections > 0)
             {
                 const char *const_payload = payload.c_str();
                 client.publish(TAG_TOPIC, const_payload, strlen(const_payload));
-                std::cout << payload.c_str() << "\n";
+//                std::cout << payload.c_str() << "\n";
             }
 
             //int fps = int(1000 / (std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() + 1));
