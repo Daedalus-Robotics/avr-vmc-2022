@@ -178,7 +178,12 @@ class WaterDrop:
                 # print(f"Offset: {time_offset}")
                 if time_offset < 5 and len(self.apriltags.visible_detections[1]) > 0:
                     if self.temp_drop_tag != -1:
-                        if self.temp_drop_tag not in self.apriltags.visible_detections[1]:
+                        tag_ids = []
+                        for tag in self.apriltags.visible_detections[1]:
+                            tag_id = tag.get("id", None)
+                            if tag_id is not None:
+                                tag_ids.append(tag_id)
+                        if self.temp_drop_tag not in tag_ids:
                             continue
                     # tag_id = self.apriltags.closest_tag[0].get("id", -1)
                     tag_id = self.apriltags.visible_detections[1][0].get("id", -1)

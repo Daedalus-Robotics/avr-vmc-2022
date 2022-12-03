@@ -52,7 +52,7 @@ class AprilTagModule:
 
         self.detections = {}
 
-        self.visible_detections = (time.time(), {})
+        self.visible_detections = (time.time(), [])
         self.closest_tag = (None, -1)
 
     def close(self) -> None:
