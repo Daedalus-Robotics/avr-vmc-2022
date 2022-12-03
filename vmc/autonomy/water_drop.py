@@ -65,6 +65,7 @@ class WaterDrop:
             )
 
     def set_drop_tag(self, number: int | dict | str) -> None:
+        print("hello")
         if isinstance(number, str):
             number = json.loads(number)
         if isinstance(number, dict):
