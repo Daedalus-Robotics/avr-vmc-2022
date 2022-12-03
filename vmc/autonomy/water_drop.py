@@ -70,6 +70,7 @@ class WaterDrop:
         if isinstance(number, dict):
             number = number.get("id", None)
         if number is not None:
+            print(f"Set drop tag to {number}")
             self.temp_drop_tag = number
             self.client.send_message(
                     "avr/gui/toast",
