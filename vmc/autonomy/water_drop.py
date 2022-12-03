@@ -47,7 +47,6 @@ class WaterDrop:
         self.client.register_callback("avr/autonomy/kill", self.kill, False, False)
         self.client.register_callback("avr/autonomy/set_drop_delay", self.set_drop_delay, True, True)
         self.client.register_callback("avr/autonomy/set_drop_tag", self.set_drop_tag, True, True)
-        self.client.client.subscribe("avr/autonomy/set_drop_tag")
         self.client.register_callback("avr/autonomy/set_auto_water_drop", self.set_auto_water_drop, True, True)
 
     def set_drop_delay(self, number: int | dict | str) -> None:
