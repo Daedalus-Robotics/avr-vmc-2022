@@ -41,14 +41,15 @@ class WaterDrop:
         # self.client.register_callback("off_en", self.mqtt_off_en, False, False)
         # self.client.register_callback("off_dis", self.mqtt_off_dis, False, False)
         # self.client.register_callback("off_go", self.mqtt_go, True, True)
-        self.temp_drop_delay = 5
+        self.temp_drop_tag = -1
+        self.temp_drop_delay = 2
 
         self.client.register_callback("avr/autonomy/kill", self.kill, False, False)
         self.client.register_callback("avr/autonomy/set_drop_delay", self.set_drop_delay, True, True)
+        self.client.register_callback("avr/autonomy/set_drop_tag", self.set_drop_tag, True, True)
         self.client.register_callback("avr/autonomy/set_auto_water_drop", self.set_auto_water_drop, True, True)
 
     def set_drop_delay(self, number: int | dict | str) -> None:
-        print(number)
         if isinstance(number, str):
             number = json.loads(number)
         if isinstance(number, dict):
@@ -60,6 +61,21 @@ class WaterDrop:
                     {
                         "text": f"Drop delay set to {number} seconds",
                         "timeout": 2
+                    }
+            )
+
+    def set_drop_tag(self, number: int | dict | str) -> None:
+        if isinstance(number, str):
+            number = json.loads(number)
+        if isinstance(number, dict):
+            number = number.get("id", None)
+        if number is not None:
+            self.temp_drop_tag = number
+            self.client.send_message(
+                    "avr/gui/toast",
+                    {
+                        "text": f"Set drop tag to {number}",
+                        "timeout": 1
                     }
             )
 
@@ -159,6 +175,9 @@ class WaterDrop:
                 time_offset = time.time() - self.apriltags.visible_detections[0]
                 # print(f"Offset: {time_offset}")
                 if time_offset < 5 and len(self.apriltags.visible_detections[1]) > 0:
+                    if self.temp_drop_tag != -1:
+                        if self.temp_drop_tag not in self.apriltags.visible_detections[1]:
+                            continue
                     # tag_id = self.apriltags.closest_tag[0].get("id", -1)
                     tag_id = self.apriltags.visible_detections[1][0].get("id", -1)
                     # print(f"tag id: {tag_id}")
